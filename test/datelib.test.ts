@@ -65,4 +65,12 @@ describe('timezone handling', () => {
     const d = toTz('2026-06-09T08:30:00Z', 'Europe/Copenhagen')
     expect(dayMinutes(d)).toBe(10 * 60 + 30)
   })
+
+  it('interprets a naive datetime string as wall-clock time in the target tz', () => {
+    // No offset → 15:00 in the shop, regardless of the host timezone (the host
+    // running these tests is UTC, which would otherwise shift it).
+    const d = toTz('2026-06-10T15:00:00', 'Europe/Copenhagen')
+    expect(dayMinutes(d)).toBe(15 * 60)
+    expect(d.format('YYYY-MM-DD')).toBe('2026-06-10')
+  })
 })

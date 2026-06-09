@@ -7,10 +7,21 @@ import type { SlotConfig, BusinessHours } from './types'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-/** Parse a value into a Dayjs anchored to `tz` (the shop timezone), if given. */
+/**
+ * Parse a value into a Dayjs anchored to `tz` (the shop timezone), if given.
+ *
+ * A naïve datetime string (no offset / `Z`) is interpreted AS wall-clock time in
+ * `tz` — not in the host's local zone — so server times like
+ * `2026-06-10T15:00:00` land at 15:00 in the shop regardless of the browser
+ * timezone. Strings with an offset, and Date/Dayjs values, are absolute instants
+ * displayed in `tz`.
+ */
 export function toTz(value: string | Date | Dayjs, tz?: string): Dayjs {
-  const d = dayjs(value)
-  return tz ? d.tz(tz) : d
+  if (!tz) return dayjs(value)
+  if (typeof value === 'string' && !/([zZ])$|[+-]\d{2}:?\d{2}$/.test(value)) {
+    return dayjs.tz(value, tz)
+  }
+  return dayjs(value).tz(tz)
 }
 
 /** "Now" in the calendar timezone. */
