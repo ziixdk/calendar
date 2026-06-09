@@ -88,6 +88,24 @@ describe('commitSelect', () => {
     expect(cal.commitSelect(start, start.add(30, 'minute'), null, new MouseEvent('pointerup'))).toBe(false)
     expect(onSelect).not.toHaveBeenCalled()
   })
+
+  it('select() resolves the resource and fires onSelect programmatically', () => {
+    const onSelect = vi.fn()
+    const cal = new Calendar(host, {
+      view: 'timeline',
+      timezone: 'Europe/Copenhagen',
+      date: '2026-06-09',
+      resources: [{ id: 'E1', title: 'A' }],
+      onSelect,
+    })
+    cal.render()
+    const ok = cal.select({ start: '2026-06-09T10:00:00', end: '2026-06-09T11:00:00', resourceId: 'E1' })
+    expect(ok).toBe(true)
+    expect(onSelect).toHaveBeenCalledOnce()
+    const info = onSelect.mock.calls[0][0]
+    expect(info.resource.id).toBe('E1')
+    expect(info.end.diff(info.start, 'minute')).toBe(60)
+  })
 })
 
 describe('editable wiring', () => {

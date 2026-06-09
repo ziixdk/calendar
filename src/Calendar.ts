@@ -429,6 +429,24 @@ export class Calendar {
     return true
   }
 
+  /**
+   * Programmatically trigger a selection (fires `onSelect`, gated by
+   * `selectAllow`) — the same path a drag-select takes. Useful for host-driven
+   * "create here" flows and automated tests.
+   */
+  select(info: {
+    start: string | Date | Dayjs
+    end: string | Date | Dayjs
+    resourceId?: string | number | null
+  }): boolean {
+    const start = toTz(info.start as string | Date, this.tz)
+    const end = toTz(info.end as string | Date, this.tz)
+    const resource = info.resourceId != null ? (this.resources.get(info.resourceId) ?? null) : null
+    const jsEvent =
+      typeof MouseEvent !== 'undefined' ? new MouseEvent('pointerup') : ({} as MouseEvent)
+    return this.commitSelect(start, end, resource, jsEvent)
+  }
+
   // ---- toolbar -------------------------------------------------------------
 
   private renderToolbar(): void {
