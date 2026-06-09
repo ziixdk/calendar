@@ -108,6 +108,35 @@ describe('commitSelect', () => {
   })
 })
 
+describe('stale response guarding', () => {
+  let host: HTMLElement
+  beforeEach(() => {
+    host = document.createElement('div')
+    document.body.appendChild(host)
+  })
+
+  it('refetchEvents ignores an older response that resolves last', async () => {
+    const resolvers: Array<(events: unknown[]) => void> = []
+    const cal = new Calendar(host, {
+      view: 'day',
+      timezone: 'Europe/Copenhagen',
+      date: '2026-06-09',
+      slot: { min: '06:00', max: '19:00' },
+      events: () => new Promise((resolve) => resolvers.push(resolve as (e: unknown[]) => void)),
+    })
+    cal.render() // refetch #1 (resolvers[0])
+    const p2 = cal.refetchEvents() // refetch #2 (resolvers[1])
+
+    resolvers[1]([{ id: 'NEW', start: '2026-06-09T09:00:00+02:00' }])
+    await p2
+    // older request resolves last — must be discarded
+    resolvers[0]([{ id: 'OLD', start: '2026-06-09T08:00:00+02:00' }])
+    await Promise.resolve()
+
+    expect(cal.getEvents().map((e) => e.id)).toEqual(['NEW'])
+  })
+})
+
 describe('editable wiring', () => {
   let host: HTMLElement
   beforeEach(() => {

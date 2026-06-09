@@ -234,11 +234,19 @@ export class Calendar {
     this.resources.set(await src(range))
   }
 
+  private fetchSeq = 0
+
   async refetchEvents(): Promise<void> {
     const src = this.options.events
     const range = this.viewImpl?.range()
     if (typeof src === 'function' && range) {
-      this.events.set(await src(range))
+      // Guard against stale responses: a rapid navigation can have an older
+      // request resolve last and overwrite the newer range's events. Only the
+      // most recent refetch is allowed to apply.
+      const seq = ++this.fetchSeq
+      const data = await src(range)
+      if (seq !== this.fetchSeq) return
+      this.events.set(data)
     }
     this.options.onEventsSet?.(this.events.all())
     this.viewImpl?.renderEvents()
