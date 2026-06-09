@@ -1,7 +1,9 @@
 import type { Calendar } from '../Calendar'
+import type { Dayjs } from 'dayjs'
 import type { DateRange, CalEvent, CalResource, ResourceColumn } from '../types'
 import { dayMinutes, minutesToTime, intlFormat } from '../datelib'
 import { packEvents } from '../layout/overlap'
+import { startDrag, snap } from '../interaction/pointer'
 import { el, clamp, type View } from './View'
 
 /** Header (time axis / column header) height in px. */
@@ -249,13 +251,157 @@ export class TimelineView implements View {
       if (ev.color) bar.style.setProperty('--zc-event-bg', ev.color)
       if (ev.textColor) bar.style.setProperty('--zc-event-fg', ev.textColor)
       bar.appendChild(this.cal.renderEventContent(ev))
-      bar.addEventListener('click', (jsEvent) =>
-        this.cal.fireEventClick(ev, bar, jsEvent as MouseEvent),
-      )
+      this.bindBar(bar, ev)
       tRow.appendChild(bar)
       this.cal.fireEventMount(ev, bar)
     }
+    this.bindRowSelect(tRow, resource)
     this.rowsEl!.appendChild(tRow)
+  }
+
+  // ---- interaction (Fase 4) ------------------------------------------------
+
+  private timeAt(minute: number): Dayjs {
+    return this.cal.date.startOf('day').add(minute, 'minute')
+  }
+
+  private minuteAtX(clientX: number): number {
+    const rect = this.rowsEl!.getBoundingClientRect()
+    return this.cal.axis.min + (clientX - rect.left) / this.pxPerMinute
+  }
+
+  /** The resource row currently under the pointer (bar ignored for hit-testing). */
+  private rowAt(event: MouseEvent, bar: HTMLElement): HTMLElement | null {
+    const prev = bar.style.pointerEvents
+    bar.style.pointerEvents = 'none'
+    const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null
+    bar.style.pointerEvents = prev
+    return (target?.closest('.zc-tl-row[data-resource-id]') as HTMLElement | null) ?? null
+  }
+
+  private highlightRow(event: MouseEvent, bar: HTMLElement): void {
+    this.clearHighlight()
+    this.rowAt(event, bar)?.classList.add('zc-drop-target')
+  }
+
+  private clearHighlight(): void {
+    this.rowsEl?.querySelectorAll('.zc-drop-target').forEach((n) => n.classList.remove('zc-drop-target'))
+  }
+
+  private bindBar(bar: HTMLElement, ev: CalEvent): void {
+    if (!this.cal.editable) {
+      bar.addEventListener('click', (jsEvent) => this.cal.fireEventClick(ev, bar, jsEvent))
+      return
+    }
+    bar.style.cursor = 'move'
+
+    const west = el('div', 'zc-resize-handle zc-resize-w')
+    const east = el('div', 'zc-resize-handle zc-resize-e')
+    bar.append(west, east)
+    west.addEventListener('pointerdown', (down) => this.beginResize(down, bar, ev, 'start'))
+    east.addEventListener('pointerdown', (down) => this.beginResize(down, bar, ev, 'end'))
+
+    bar.addEventListener('pointerdown', (down) => {
+      if (down.button !== 0) return
+      if ((down.target as HTMLElement).closest('.zc-resize-handle')) return
+      down.preventDefault()
+      const axis = this.cal.axis
+      const durMin = ev.end.diff(ev.start, 'minute')
+      const origStartMin = dayMinutes(ev.start)
+      const grabMin = this.minuteAtX(down.clientX)
+      const startMinAt = (clientX: number): number =>
+        clamp(
+          snap(origStartMin + (this.minuteAtX(clientX) - grabMin), axis.duration),
+          axis.min,
+          axis.max - durMin,
+        )
+      startDrag(down, {
+        onStart: () => bar.classList.add('zc-dragging'),
+        onMove: ({ event }) => {
+          bar.style.left = `${(startMinAt(event.clientX) - axis.min) * this.pxPerMinute}px`
+          this.highlightRow(event, bar)
+        },
+        onEnd: ({ moved, event }) => {
+          bar.classList.remove('zc-dragging')
+          this.clearHighlight()
+          if (!moved) {
+            this.cal.fireEventClick(ev, bar, event)
+            return
+          }
+          const row = this.rowAt(event, bar)
+          const newResource = row ? (row.dataset.resourceId ?? null) : ev.resourceId
+          const newStart = this.timeAt(startMinAt(event.clientX))
+          this.cal.commitEventChange(ev, newStart, newStart.add(durMin, 'minute'), newResource)
+        },
+      })
+    })
+  }
+
+  private beginResize(down: MouseEvent, bar: HTMLElement, ev: CalEvent, edge: 'start' | 'end'): void {
+    if (down.button !== 0) return
+    down.stopPropagation()
+    down.preventDefault()
+    const axis = this.cal.axis
+    const minuteAt = (clientX: number) => clamp(snap(this.minuteAtX(clientX), axis.duration), axis.min, axis.max)
+    startDrag(down, {
+      onStart: () => bar.classList.add('zc-dragging'),
+      onMove: ({ event }) => {
+        const m = minuteAt(event.clientX)
+        if (edge === 'end') {
+          const endMin = Math.max(m, dayMinutes(ev.start) + axis.duration)
+          bar.style.width = `${(endMin - dayMinutes(ev.start)) * this.pxPerMinute}px`
+        } else {
+          const startMin = Math.min(m, dayMinutes(ev.end) - axis.duration)
+          bar.style.left = `${(startMin - axis.min) * this.pxPerMinute}px`
+          bar.style.width = `${(dayMinutes(ev.end) - startMin) * this.pxPerMinute}px`
+        }
+      },
+      onEnd: ({ moved, event }) => {
+        bar.classList.remove('zc-dragging')
+        if (!moved) return
+        const m = minuteAt(event.clientX)
+        if (edge === 'end') {
+          const endMin = Math.max(m, dayMinutes(ev.start) + axis.duration)
+          this.cal.commitEventChange(ev, ev.start, this.timeAt(endMin), ev.resourceId)
+        } else {
+          const startMin = Math.min(m, dayMinutes(ev.end) - axis.duration)
+          this.cal.commitEventChange(ev, this.timeAt(startMin), ev.end, ev.resourceId)
+        }
+      },
+    })
+  }
+
+  private bindRowSelect(tRow: HTMLElement, resource: CalResource): void {
+    if (!this.cal.selectable) return
+    tRow.addEventListener('pointerdown', (down) => {
+      if (down.button !== 0) return
+      if ((down.target as HTMLElement).closest('.zc-event')) return
+      down.preventDefault()
+      const axis = this.cal.axis
+      const anchor = clamp(snap(this.minuteAtX(down.clientX), axis.duration), axis.min, axis.max)
+      const box = el('div', 'zc-select-box zc-tl-select')
+      tRow.appendChild(box)
+      const place = (clientX: number) => {
+        const cur = clamp(snap(this.minuteAtX(clientX), axis.duration), axis.min, axis.max)
+        const lo = Math.min(anchor, cur)
+        const hi = Math.max(anchor, cur)
+        box.style.left = `${(lo - axis.min) * this.pxPerMinute}px`
+        box.style.width = `${(hi - lo) * this.pxPerMinute}px`
+      }
+      startDrag(down, {
+        onMove: ({ event }) => place(event.clientX),
+        onEnd: ({ moved, event }) => {
+          box.remove()
+          if (!moved) return
+          const cur = clamp(snap(this.minuteAtX(event.clientX), axis.duration), axis.min, axis.max)
+          let lo = Math.min(anchor, cur)
+          let hi = Math.max(anchor, cur)
+          if (hi <= lo) hi = Math.min(lo + axis.duration, axis.max)
+          if (hi <= lo) return
+          this.cal.commitSelect(this.timeAt(lo), this.timeAt(hi), resource, event)
+        },
+      })
+    })
   }
 
   private fillResourceCell(cell: HTMLElement, col: ResourceColumn, resource: CalResource): void {

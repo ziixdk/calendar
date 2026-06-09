@@ -86,6 +86,14 @@ export class Calendar {
     return this.locale.firstDay ?? this.options.firstDay ?? 1
   }
 
+  get editable(): boolean {
+    return this.options.editable === true
+  }
+
+  get selectable(): boolean {
+    return this.options.selectable === true
+  }
+
   now(): Dayjs {
     return nowTz(this.tz)
   }
@@ -273,6 +281,62 @@ export class Calendar {
 
   fireEventMount(event: CalEvent, el: HTMLElement): void {
     this.options.onEventMount?.({ event, el })
+  }
+
+  /** Whether events are allowed to overlap on the same resource (default true). */
+  private allowsOverlap(): boolean {
+    const o = this.options.eventOverlap
+    if (o === undefined) return true
+    return typeof o === 'function' ? o() : o
+  }
+
+  private hasCollision(event: CalEvent, start: Dayjs, end: Dayjs, resourceId: string | null): boolean {
+    return this.events
+      .all()
+      .some(
+        (e) =>
+          e.id !== event.id &&
+          e.resourceId === resourceId &&
+          e.start.isBefore(end) &&
+          e.end.isAfter(start),
+      )
+  }
+
+  /**
+   * Apply a drag/resize result: gate on `eventOverlap`, mutate the event,
+   * re-render, and fire `onEventChange`. Returns false (and reverts the live
+   * preview by re-rendering) when the move is rejected.
+   */
+  commitEventChange(
+    event: CalEvent,
+    start: Dayjs,
+    end: Dayjs,
+    resourceId: string | null,
+  ): boolean {
+    const unchanged =
+      event.start.isSame(start) && event.end.isSame(end) && event.resourceId === resourceId
+    if (unchanged) {
+      this.viewImpl?.renderEvents()
+      return false
+    }
+    if (!this.allowsOverlap() && this.hasCollision(event, start, end, resourceId)) {
+      this.viewImpl?.renderEvents()
+      return false
+    }
+    const oldEvent: CalEvent = { ...event }
+    event.start = start
+    event.end = end
+    event.resourceId = resourceId
+    this.viewImpl?.renderEvents()
+    this.options.onEventChange?.({ event, oldEvent })
+    return true
+  }
+
+  /** Gate a drag-selection on `selectAllow`, then fire `onSelect`. */
+  commitSelect(start: Dayjs, end: Dayjs, resource: CalResource | null, jsEvent: MouseEvent): boolean {
+    if (this.options.selectAllow && !this.options.selectAllow({ start, end, resource })) return false
+    this.options.onSelect?.({ start, end, resource, jsEvent })
+    return true
   }
 
   // ---- toolbar -------------------------------------------------------------

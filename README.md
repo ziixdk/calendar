@@ -5,9 +5,9 @@ replacement for the FullCalendar views DMS uses (`timeGridDay`, `resourceTimeGri
 `resourceTimeline`). No premium scheduler licence, no React/Vue/Preact dependency: a
 plain imperative class you drive through a ref from any framework.
 
-> **Status: early.** Fase 0 (core), Fase 1 (day view) and Fase 3 (timeline view) are
-> implemented. The `resource-day` view and the drag/resize/select interaction engine are
-> on the roadmap below and currently throw a clear "not implemented yet" error.
+> **Status: early.** Fase 0 (core), Fase 1 (day view), Fase 3 (timeline view) and Fase 4
+> (drag/resize/select) are implemented. The `resource-day` view is still on the roadmap
+> below and currently throws a clear "not implemented yet" error.
 
 ## Install
 
@@ -146,14 +146,60 @@ Custom fields (e.g. `make`, `workHours`) are available as `resource.raw.<field>`
 | `renderEvent` | `(event) => string \| HTMLElement` | custom event body |
 | `renderResource` | `(resource) => string \| HTMLElement` | custom resource label |
 | `timeFormat` | `Intl.DateTimeFormatOptions` | default event time format |
+| `editable` | `boolean` | enable drag-move + resize |
+| `selectable` | `boolean` | enable drag-select of empty ranges |
+| `eventOverlap` | `boolean \| (() => boolean)` | allow overlapping events on drop; default `true` |
+| `selectAllow` | `({ start, end, resource }) => boolean` | gate which ranges can be selected |
 | `onEventClick` | `({ event, el, jsEvent }) => void` | |
 | `onEventMount` | `({ event, el }) => void` | bind context menus / deep-link highlight here |
+| `onEventChange` | `({ event, oldEvent }) => void` | after a drag/resize commit |
+| `onSelect` | `({ start, end, resource, jsEvent }) => void` | after a drag-select |
 | `onDatesSet` | `({ start, end, view }) => void` | fires on navigation / view change |
 | `onEventsSet` | `(events) => void` | after each event load |
 
-> Drag/resize options (`editable`, `selectable`, `eventOverlap`, `selectAllow`,
-> `onEventChange`, `onSelect`) are typed but not wired yet — they land with the interaction
-> engine (Fase 4).
+## Editing — drag, resize, select
+
+Set `editable: true` to let users drag events to a new time (and, in the timeline, a new
+resource row) and resize them by their edges. Set `selectable: true` to let users
+drag-select an empty range. Everything snaps to `slot.duration`.
+
+```js
+const cal = new Calendar(el, {
+  view: 'timeline',
+  editable: true,
+  selectable: true,
+
+  // false ⇒ a drop/resize that would overlap another event on the same resource is
+  // rejected and snaps back. May be a function evaluated per drop.
+  eventOverlap: () => shop.settings.calendar_overlap,
+
+  // gate which ranges may be selected (e.g. only employee or rental-car rows)
+  selectAllow: ({ resource }) => !!resource && /^[EC]/.test(resource.id),
+
+  // fired after a successful drag/resize — persist it to your backend here
+  onEventChange: ({ event, oldEvent }) => {
+    api.patch(`/calendar/event/${event.id}`, {
+      from: event.start.toISOString(),
+      to: event.end.toISOString(),
+      resource: event.resourceId,
+    })
+    // on failure you can restore oldEvent and call cal.refetchEvents()
+  },
+
+  // fired after a drag-select — open a "new event" menu, etc.
+  onSelect: ({ start, end, resource }) => openNewEventMenu(start, end, resource),
+})
+```
+
+Behaviour notes:
+
+- **Day view:** drag moves vertically (time only); resize from the bottom edge.
+- **Timeline:** drag moves horizontally (time) and vertically (across resource rows);
+  resize from either edge.
+- A rejected move (overlap / out of bounds) reverts automatically — `onEventChange` does
+  **not** fire.
+- A plain click on an editable event still fires `onEventClick` (distinguished from a drag
+  by a movement threshold).
 
 ## Imperative API
 
@@ -247,8 +293,8 @@ npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 | 0 | Core: Calendar class, stores, datelib, toolbar, navigation, theming | ✅ |
 | 1 | `day` view: time axis, overlap packing, now indicator, event hooks | ✅ |
 | 3 | `timeline` view (resources as rows, horizontal axis, grouping, custom resource columns, event stacking) | ✅ |
+| 4 | Interaction engine: drag-move, resize, drag-select, overlap/allow gating | ✅ |
 | 2 | `resource-day` view (resources as columns) | ⏳ |
-| 4 | Interaction engine: drag-move, resize, drag-select | ⏳ |
 | 5 | Locale pack, deep-link highlight, a11y polish | ⏳ |
 
 ## License
