@@ -48,7 +48,13 @@
           ],
         },
         buttons: {
-          toggle: { text: 'Skift view', onClick: () => cal.changeView(cal.view === 'timeline' ? 'day' : 'timeline') },
+          toggle: {
+            text: 'Skift view',
+            onClick: () => {
+              const order = ['timeline', 'resource-day', 'day']
+              cal.changeView(order[(order.indexOf(cal.view) + 1) % order.length])
+            },
+          },
         },
         toolbar: { start: 'toggle', center: 'title', end: 'today prev next' },
         resources: [
