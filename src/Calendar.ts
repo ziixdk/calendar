@@ -283,6 +283,16 @@ export class Calendar {
     this.options.onEventMount?.({ event, el })
   }
 
+  /** Attach a right-click handler to an event bar when `onEventContextMenu` is set. */
+  bindContextMenu(el: HTMLElement, event: CalEvent): void {
+    const handler = this.options.onEventContextMenu
+    if (!handler) return
+    el.addEventListener('contextmenu', (jsEvent) => {
+      jsEvent.preventDefault()
+      handler({ event, el, jsEvent })
+    })
+  }
+
   /** Whether events are allowed to overlap on the same resource (default true). */
   private allowsOverlap(): boolean {
     const o = this.options.eventOverlap

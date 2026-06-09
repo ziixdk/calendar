@@ -142,6 +142,7 @@ Custom fields (e.g. `make`, `workHours`) are available as `resource.raw.<field>`
 | `firstDay` | `number` | 0 = Sunday; default 1 |
 | `slot` | `{ duration?, min?, max?, labelInterval? }` | minutes / `'HH:mm'` / minutes |
 | `height` | `number \| string` | applied to the host element |
+| `eventMinHeight` | `number` | min height (px) of a stacked event in the timeline; row grows to fit. Default 48 |
 | `nowIndicator` | `boolean` | current-time line |
 | `toolbar` | `{ start?, center?, end? } \| false` | space-separated tokens: `today prev next title <customKey>` |
 | `buttons` | `{ [key]: { text?, icon?, onClick } }` | custom toolbar buttons |
@@ -158,7 +159,8 @@ Custom fields (e.g. `make`, `workHours`) are available as `resource.raw.<field>`
 | `eventOverlap` | `boolean \| (() => boolean)` | allow overlapping events on drop; default `true` |
 | `selectAllow` | `({ start, end, resource }) => boolean` | gate which ranges can be selected |
 | `onEventClick` | `({ event, el, jsEvent }) => void` | |
-| `onEventMount` | `({ event, el }) => void` | bind context menus / deep-link highlight here |
+| `onEventContextMenu` | `({ event, el, jsEvent }) => void` | right-click; native menu suppressed |
+| `onEventMount` | `({ event, el }) => void` | bind deep-link highlight / extra listeners here |
 | `onEventChange` | `({ event, oldEvent }) => void` | after a drag/resize commit |
 | `onSelect` | `({ start, end, resource, jsEvent }) => void` | after a drag-select |
 | `onDatesSet` | `({ start, end, view }) => void` | fires on navigation / view change |
@@ -207,6 +209,27 @@ Behaviour notes:
   **not** fire.
 - A plain click on an editable event still fires `onEventClick` (distinguished from a drag
   by a movement threshold).
+
+## Context menus
+
+Right-click on an event fires `onEventContextMenu` (the native browser menu is suppressed
+first). The calendar deliberately does **not** ship a menu UI — you render your own from the
+hook, so it matches your app. Works in all three views, on read-only and editable events.
+
+```js
+const cal = new Calendar(el, {
+  onEventContextMenu: ({ event, jsEvent }) => {
+    myMenu.open(jsEvent.clientX, jsEvent.clientY, [
+      { label: 'Open order', run: () => openOrder(event.extendedProps.orderId) },
+      { label: 'Delete', run: () => cal.getEventById(event.id)?.remove() },
+    ])
+  },
+})
+```
+
+For a context menu on **empty** space (e.g. "create here"), use `onSelect` — a drag-select
+gives you `{ start, end, resource }` to anchor the menu. See `examples/index.html` for a
+working menu implementation.
 
 ## Imperative API
 

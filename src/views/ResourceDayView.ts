@@ -213,6 +213,7 @@ export class ResourceDayView implements View {
   }
 
   private bindBar(bar: HTMLElement, ev: CalEvent): void {
+    this.cal.bindContextMenu(bar, ev)
     if (!this.cal.editable) {
       bar.addEventListener('click', (jsEvent) => this.cal.fireEventClick(ev, bar, jsEvent))
       return

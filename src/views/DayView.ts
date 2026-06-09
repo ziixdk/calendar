@@ -130,6 +130,7 @@ export class DayView implements View {
 
   /** Wire click, drag-move and resize on an event bar (or just click if read-only). */
   private bindBar(bar: HTMLElement, ev: CalEvent): void {
+    this.cal.bindContextMenu(bar, ev)
     if (!this.cal.editable) {
       bar.addEventListener('click', (jsEvent) => this.cal.fireEventClick(ev, bar, jsEvent))
       return

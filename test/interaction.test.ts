@@ -117,6 +117,33 @@ function fire(target: EventTarget, type: string, clientX: number, clientY: numbe
   )
 }
 
+describe('onEventContextMenu', () => {
+  let host: HTMLElement
+  beforeEach(() => {
+    host = document.createElement('div')
+    document.body.appendChild(host)
+  })
+
+  it('fires on right-click and suppresses the native menu (read-only bars too)', () => {
+    const onEventContextMenu = vi.fn()
+    dayCal(host, { onEventContextMenu })
+    const bar = host.querySelector<HTMLElement>('.zc-event')!
+    const evt = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    bar.dispatchEvent(evt)
+    expect(onEventContextMenu).toHaveBeenCalledOnce()
+    expect(onEventContextMenu.mock.calls[0][0].event.id).toBe('1')
+    expect(evt.defaultPrevented).toBe(true)
+  })
+
+  it('does nothing when no handler is set', () => {
+    dayCal(host)
+    const bar = host.querySelector<HTMLElement>('.zc-event')!
+    const evt = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    bar.dispatchEvent(evt)
+    expect(evt.defaultPrevented).toBe(false)
+  })
+})
+
 describe('drag-select gesture (day)', () => {
   let host: HTMLElement
   beforeEach(() => {

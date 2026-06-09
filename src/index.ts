@@ -33,6 +33,7 @@ export type {
   ResourceSource,
   SelectInfo,
   EventClickInfo,
+  EventContextMenuInfo,
   EventMountInfo,
   EventChangeInfo,
   DatesSetInfo,

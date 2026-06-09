@@ -10,10 +10,8 @@ import { el, clamp, type View } from './View'
 const HEAD_H = 38
 /** Group header row height in px. */
 const GROUP_H = 26
-/** Minimum resource row height in px. */
-const ROW_MIN = 56
-/** Minimum height of one stacked event level in px. */
-const LEVEL_MIN = 28
+/** Default minimum height of one stacked event level in px (override via `eventMinHeight`). */
+const DEFAULT_EVENT_MIN_H = 48
 /** Vertical padding inside a resource row in px. */
 const PAD = 4
 /** Width of one hour on the time axis in px. */
@@ -209,8 +207,11 @@ export class TimelineView implements View {
   private appendResourceRow(resource: CalResource, events: CalEvent[]): void {
     const packed = packEvents(events)
     const levels = packed.reduce((max, p) => Math.max(max, p.cols), 1)
-    const rowH = Math.max(ROW_MIN, levels * LEVEL_MIN + 2 * PAD)
-    const levelH = (rowH - 2 * PAD) / levels
+    // Each stacked level keeps at least eventMinHeight, so the row grows with the
+    // number of overlapping events instead of squashing them together.
+    const eventMinH = this.cal.options.eventMinHeight ?? DEFAULT_EVENT_MIN_H
+    const rowH = levels * eventMinH + 2 * PAD
+    const levelH = eventMinH
 
     // Resource-area row: one cell per column.
     const rRow = el('div', 'zc-tl-resource-row')
@@ -289,6 +290,7 @@ export class TimelineView implements View {
   }
 
   private bindBar(bar: HTMLElement, ev: CalEvent): void {
+    this.cal.bindContextMenu(bar, ev)
     if (!this.cal.editable) {
       bar.addEventListener('click', (jsEvent) => this.cal.fireEventClick(ev, bar, jsEvent))
       return

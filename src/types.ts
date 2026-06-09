@@ -132,6 +132,13 @@ export interface EventClickInfo {
   jsEvent: MouseEvent
 }
 
+export interface EventContextMenuInfo {
+  event: CalEvent
+  el: HTMLElement
+  /** The contextmenu event; `preventDefault()` has already been called. */
+  jsEvent: MouseEvent
+}
+
 export interface EventMountInfo {
   event: CalEvent
   el: HTMLElement
@@ -170,6 +177,12 @@ export interface CalendarOptions {
   editable?: boolean
   selectable?: boolean
   height?: number | string
+  /**
+   * Minimum height (px) of a single stacked event in the timeline. The resource
+   * row grows to `levels × eventMinHeight` so overlapping events keep this height
+   * instead of being squashed. Default 48.
+   */
+  eventMinHeight?: number
   toolbar?: ToolbarConfig | false
   buttons?: Record<string, CustomButton>
   resources?: ResourceSource
@@ -184,6 +197,8 @@ export interface CalendarOptions {
   eventOverlap?: boolean | (() => boolean)
   selectAllow?: (info: { start: Dayjs; end: Dayjs; resource: CalResource | null }) => boolean
   onEventClick?: (info: EventClickInfo) => void
+  /** Right-click on an event. The native menu is suppressed before this fires. */
+  onEventContextMenu?: (info: EventContextMenuInfo) => void
   onEventChange?: (info: EventChangeInfo) => void
   onSelect?: (info: SelectInfo) => void
   onDatesSet?: (info: DatesSetInfo) => void
