@@ -5,9 +5,9 @@ replacement for the FullCalendar views DMS uses (`timeGridDay`, `resourceTimeGri
 `resourceTimeline`). No premium scheduler licence, no React/Vue/Preact dependency: a
 plain imperative class you drive through a ref from any framework.
 
-> **Status: early.** Fase 0 (core) and Fase 1 (day view) are implemented. The
-> `resource-day` and `timeline` views, and the drag/resize/select interaction engine,
-> are on the roadmap below and currently throw a clear "not implemented yet" error.
+> **Status: early.** Fase 0 (core), Fase 1 (day view) and Fase 3 (timeline view) are
+> implemented. The `resource-day` view and the drag/resize/select interaction engine are
+> on the roadmap below and currently throw a clear "not implemented yet" error.
 
 ## Install
 
@@ -99,8 +99,8 @@ npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 | --- | --- | --- |
 | 0 | Core: Calendar class, stores, datelib, toolbar, navigation, theming | ✅ |
 | 1 | `day` view: time axis, overlap packing, now indicator, event hooks | ✅ |
+| 3 | `timeline` view (resources as rows, horizontal axis, grouping, custom resource columns, event stacking) | ✅ |
 | 2 | `resource-day` view (resources as columns) | ⏳ |
-| 3 | `timeline` view (resources as rows, horizontal axis) | ⏳ |
 | 4 | Interaction engine: drag-move, resize, drag-select | ⏳ |
 | 5 | Locale pack, deep-link highlight, a11y polish | ⏳ |
 

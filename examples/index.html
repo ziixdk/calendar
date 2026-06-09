@@ -27,17 +27,36 @@
 
       const today = new Date().toISOString().slice(0, 10)
       const cal = new Calendar(document.getElementById('calendar'), {
-        view: 'day',
+        view: 'timeline',
         timezone: 'Europe/Copenhagen',
         date: today,
         height: 720,
         slot: { duration: 15, min: '06:00', max: '19:00', labelInterval: 60 },
         nowIndicator: true,
         locale: { code: 'da', intl: 'da-DK', firstDay: 1 },
+        resourceGroupField: 'group',
+        resourceArea: {
+          width: '25%',
+          columns: [
+            { field: 'title', header: 'Afdelinger' },
+            { header: 'Tider', render: (r) => `<small style="color:#888">${r.id}</small>` },
+          ],
+        },
+        buttons: {
+          toggle: { text: 'Skift view', onClick: () => cal.changeView(cal.view === 'timeline' ? 'day' : 'timeline') },
+        },
+        toolbar: { start: 'toggle', center: 'title', end: 'today prev next' },
+        resources: [
+          { id: 'E1', title: 'Anders', group: 'Mekanik' },
+          { id: 'E2', title: 'Bo', group: 'Mekanik' },
+          { id: 'C1', title: 'Lånebil 1', group: 'Biler' },
+          { id: 'C2', title: 'Lånebil 2', group: 'Biler' },
+        ],
         events: [
-          { id: 1, title: 'Klargøring VW Golf', start: `${today}T08:00:00+02:00`, end: `${today}T09:30:00+02:00` },
-          { id: 2, title: 'Service Audi A4', start: `${today}T08:30:00+02:00`, end: `${today}T10:00:00+02:00` },
-          { id: 3, title: 'Syn', start: `${today}T11:00:00+02:00`, end: `${today}T11:45:00+02:00` },
+          { id: 1, title: 'Klargøring VW Golf', start: `${today}T08:00:00+02:00`, end: `${today}T09:30:00+02:00`, resourceId: 'E1' },
+          { id: 2, title: 'Service Audi A4', start: `${today}T08:30:00+02:00`, end: `${today}T10:00:00+02:00`, resourceId: 'E1' },
+          { id: 3, title: 'Syn', start: `${today}T11:00:00+02:00`, end: `${today}T11:45:00+02:00`, resourceId: 'E2' },
+          { id: 4, title: 'Udlejning', start: `${today}T09:00:00+02:00`, end: `${today}T15:00:00+02:00`, resourceId: 'C1' },
         ],
         onEventClick: ({ event }) => alert(event.title),
       })
