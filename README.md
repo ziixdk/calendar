@@ -353,6 +353,16 @@ npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 - **Themeable** via `--zc-*` custom properties; **translatable** via the `locale` option
 - **Typed** — ships TypeScript declarations; one peer dependency (`dayjs`)
 
+## Changelog
+
+| Version | Highlights |
+| --- | --- |
+| **0.1.4** | Public `select({ start, end, resourceId })` — trigger a selection programmatically (fires `onSelect`, gated by `selectAllow`). |
+| **0.1.3** | Business-hours shading — non-open time is greyed per resource via `businessHours` (resource-level or global); `BusinessHours` type. |
+| **0.1.2** | Non-standard top-level resource fields fold into `extendedProps`; resource `setExtendedProp` re-renders only the resource area and coalesces bursts (no timeline flicker); clearer drag drop-target; more resource-cell padding. |
+| **0.1.1** | Docs only — describe the library on its own terms. |
+| **0.1.0** | Initial release: `day` / `resource-day` / `timeline` views, drag-move / resize / drag-select with overlap & allow gating, resource grouping & custom columns, `dayClosed`, `onEventContextMenu`, timezone-correct rendering, theming via `--zc-*`, translatable via `locale`, TypeScript types. |
+
 ## License
 
 MIT
