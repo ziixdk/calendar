@@ -2,7 +2,7 @@
  * @ziix/calendar base styles.
  *
  * Everything is driven by --zc-* custom properties so a host app can remap them
- * to its own design tokens (DMS maps them to its OKLCH palette). Override the
+ * to its own design tokens (e.g. an OKLCH palette). Override the
  * variables on `.zc` or any ancestor; never restyle internals directly.
  */
 .zc {

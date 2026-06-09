@@ -169,7 +169,7 @@ export interface DatesSetInfo {
   view: ViewType
 }
 
-/** Handle returned by addEvent/getEventById, mirroring the imperative API hosts rely on. */
+/** Handle returned by addEvent/getEventById for imperative updates from outside. */
 export interface EventHandle {
   id: string
   event: CalEvent

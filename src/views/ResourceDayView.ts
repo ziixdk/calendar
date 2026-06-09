@@ -8,8 +8,7 @@ import { el, clamp, type View } from './View'
 import { SLOT_PX } from './DayView'
 
 /**
- * Resources-as-columns day view (the `resourceTimeGridDay` equivalent) used by
- * the team calendar: a shared vertical time axis with one column per resource,
+ * Resources-as-columns day view: a shared vertical time axis with one column per resource,
  * grouped under sticky header bands. Reuses the day view's vertical geometry and
  * supports drag-move (incl. across columns → resource change), resize and
  * drag-select.

@@ -20,7 +20,7 @@ import { ResourceDayView } from './views/ResourceDayView'
 import { TimelineView } from './views/TimelineView'
 
 // Neutral English defaults — every label is overridable via the `locale` option,
-// so a host app passes its own translations (DMS feeds its trans() values in).
+// so a host app passes its own translations in.
 const DEFAULT_LOCALE: Locale = {
   code: 'en',
   buttons: { today: 'Today', prev: '‹', next: '›' },
@@ -105,7 +105,7 @@ export class Calendar {
     return this.viewImpl?.range().end ?? this._date.endOf('day')
   }
 
-  /** The active view's type and date window (parity with FullCalendar's `view`). */
+  /** The active view's type and date window. */
   getView(): { type: ViewType; activeStart: Dayjs; activeEnd: Dayjs } {
     return { type: this._view, activeStart: this.activeStart, activeEnd: this.activeEnd }
   }

@@ -38,7 +38,7 @@ export class ResourceStore {
    * Resources in display order. With `resourceOrder: 'id'` they are sorted by a
    * natural id comparison (so 'E2' precedes 'E10'); with a numeric order field
    * they sort by it; otherwise the original input order is preserved (sort is
-   * stable), matching FullCalendar's default.
+   * stable).
    */
   ordered(): CalResource[] {
     if (this.orderField === 'id') {

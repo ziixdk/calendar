@@ -10,9 +10,9 @@ import { el, clamp, type View } from './View'
 export const SLOT_PX = 24
 
 /**
- * Single-column day view (the `timeGridDay` equivalent): a vertical time axis
- * with absolutely-positioned, overlap-packed events. Read-only in this build;
- * drag/resize arrive with the interaction engine (Fase 4).
+ * Single-column day view: a vertical time axis
+ * with absolutely-positioned, overlap-packed events. Supports drag-move,
+ * resize and drag-select when `editable`/`selectable` are set.
  */
 export class DayView implements View {
   protected grid?: HTMLElement
@@ -117,7 +117,7 @@ export class DayView implements View {
     this.renderNowIndicator()
   }
 
-  // ---- interaction (Fase 4) ------------------------------------------------
+  // ---- interaction ---------------------------------------------------------
 
   private timeAt(minute: number): Dayjs {
     return this.cal.date.startOf('day').add(minute, 'minute')

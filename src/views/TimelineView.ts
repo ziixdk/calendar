@@ -20,13 +20,13 @@ const HOUR_PX = 90
 const EVENT_MIN_W = 14
 
 /**
- * Resources-as-rows horizontal timeline (the `resourceTimeline` equivalent).
+ * Resources-as-rows horizontal timeline.
  *
  * Layout: a sticky resource area (one or more columns) on the left and a
  * horizontally-scrolling time grid on the right. Resources may be grouped; each
  * resource is a row whose height grows to stack overlapping events into levels.
- * Read-only in this build — drag/resize/select arrive with the interaction
- * engine (Fase 4).
+ * Supports drag-move (incl. across resource rows), resize and drag-select when
+ * `editable`/`selectable` are set.
  */
 export class TimelineView implements View {
   private rootEl?: HTMLElement
@@ -260,7 +260,7 @@ export class TimelineView implements View {
     this.rowsEl!.appendChild(tRow)
   }
 
-  // ---- interaction (Fase 4) ------------------------------------------------
+  // ---- interaction ---------------------------------------------------------
 
   private timeAt(minute: number): Dayjs {
     return this.cal.date.startOf('day').add(minute, 'minute')

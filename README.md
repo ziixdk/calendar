@@ -2,14 +2,14 @@
 
 By [ziix.eu](https://ziix.eu) · [npm](https://www.npmjs.com/package/@ziix/calendar)
 
-A framework-agnostic resource & time-grid calendar — a from-scratch, **license-free**
-replacement for the FullCalendar views DMS uses (`timeGridDay`, `resourceTimeGridDay`,
-`resourceTimeline`). No premium scheduler licence, no React/Vue/Preact dependency: a
-plain imperative class you drive through a ref from any framework.
+A framework-agnostic resource & time-grid calendar with three views — **day**,
+**resource-day** (resources as columns) and **timeline** (resources as rows) — plus
+drag/resize/select, resource grouping and timezone-correct rendering. No framework
+dependency: a plain imperative class you drive through a ref from React, Preact, Vue,
+Svelte or vanilla JS.
 
-> **Status.** All three views (`day`, `resource-day`, `timeline`) and the full interaction
-> engine (drag/resize/select) are implemented and tested. Published on npm — remaining work
-> is polish and the DMS migration (see the roadmap below).
+> **Status.** All three views and the full interaction engine (drag/resize/select) are
+> implemented and tested, and the package is published on npm.
 
 ## Install
 
@@ -27,7 +27,7 @@ import '@ziix/calendar/styles.css'
 
 const cal = new Calendar(document.getElementById('calendar'), {
   view: 'day',
-  timezone: 'Europe/Copenhagen', // events are placed in the shop's clock, not the browser's
+  timezone: 'Europe/Copenhagen', // events are placed in this timezone, not the browser's
   date: '2026-06-09',
   height: 780,
   slot: { duration: 15, min: '06:00', max: '19:00', labelInterval: 60 },
@@ -60,9 +60,8 @@ events: async ({ start, end }) => {
 
 ## Timeline view (resources as rows)
 
-This is the `resourceTimeline` replacement: a sticky resource area on the left and a
-horizontally-scrolling time grid on the right. Pass `resources` (array or function) and
-set `view: 'timeline'`.
+A sticky resource area on the left and a horizontally-scrolling time grid on the right.
+Pass `resources` (array or function) and set `view: 'timeline'`.
 
 ```js
 const cal = new Calendar(el, {
@@ -94,7 +93,7 @@ const cal = new Calendar(el, {
     { id: 1, title: 'Service', start: '...', end: '...', resourceId: 'E1' },
   ],
 
-  // custom label for the default resource column (FullCalendar's resourceLabelContent)
+  // custom label for the default resource column
   renderResource: (resource) => `<strong>${resource.title}</strong>`,
 
   onEventClick: ({ event }) => openOrder(event.extendedProps.orderId),
@@ -107,8 +106,8 @@ grows to fit them. An event without a matching `resourceId` is not shown in the 
 
 ### Resource-day view (resources as columns)
 
-`view: 'resource-day'` is the `resourceTimeGridDay` equivalent: the same vertical time axis
-as the day view, but with one column per resource under a sticky, grouped header. Takes the
+`view: 'resource-day'` uses the same vertical time axis as the day view, but with one
+column per resource under a sticky, grouped header. Takes the
 same `resources` / `resourceGroupField` / `renderResource` options as the timeline. With
 `editable`, dragging an event sideways moves it to another resource column.
 
@@ -183,7 +182,7 @@ const cal = new Calendar(el, {
 
   // false ⇒ a drop/resize that would overlap another event on the same resource is
   // rejected and snaps back. May be a function evaluated per drop.
-  eventOverlap: () => shop.settings.calendar_overlap,
+  eventOverlap: () => settings.allowOverlap,
 
   // gate which ranges may be selected (e.g. only employee or rental-car rows)
   selectAllow: ({ resource }) => !!resource && /^[EC]/.test(resource.id),
@@ -235,8 +234,7 @@ working menu implementation.
 
 ## Imperative API
 
-The calendar is a plain class you drive through a ref — mirrors the surface FullCalendar
-consumers rely on:
+The calendar is a plain class you drive through a ref:
 
 | Method | Purpose |
 | --- | --- |
@@ -254,13 +252,12 @@ consumers rely on:
 
 ### Real-time updates
 
-Drive incremental updates from a websocket without a full refetch (DMS uses Laravel Echo):
+Drive incremental updates from a websocket without a full refetch:
 
 ```js
-echo.private(`shop.${id}`)
-  .listen('.eventCreated', (e) => cal.addEvent(e.event))
-  .listen('.eventUpdated', () => cal.refetchEvents())
-  .listen('.eventRemoved', (e) => cal.getEventById(e.id)?.remove())
+socket.on('event:created', (e) => cal.addEvent(e.event))
+socket.on('event:updated', () => cal.refetchEvents())
+socket.on('event:removed', (e) => cal.getEventById(e.id)?.remove())
 ```
 
 ### Using it from Preact / React
@@ -280,7 +277,7 @@ export function CalendarView({ shopId }) {
   useEffect(() => {
     const cal = new Calendar(elRef.current, {
       view: 'timeline',
-      timezone: window.ziix.timezone,
+      timezone: 'Europe/Copenhagen',
       events: ({ start, end }) => fetchEvents(shopId, start, end),
       resources: () => fetchResources(shopId),
       onEventClick: ({ event }) => openOrder(event),
@@ -299,8 +296,7 @@ export function CalendarView({ shopId }) {
 The calendar renders almost no text of its own — column headers, resource labels and
 event content all come from **your** render hooks, so they're already in your language.
 The only built-in strings are the toolbar buttons, and the date in the title. Both are
-driven by the `locale` option — pass your app's translations there (DMS feeds its
-`trans()` values straight in):
+driven by the `locale` option — pass your app's translations there:
 
 ```js
 const cal = new Calendar(el, {
@@ -308,8 +304,8 @@ const cal = new Calendar(el, {
     code: 'da',
     intl: 'da-DK', // BCP-47 tag used by Intl to format the title date
     firstDay: 1,
-    buttons:    { today: trans('e.today'), prev: '‹', next: '›' },
-    ariaLabels: { today: trans('e.today'), prev: trans('e.prev'), next: trans('e.next') },
+    buttons:    { today: t('today'), prev: '‹', next: '›' },
+    ariaLabels: { today: t('today'), prev: t('prev'), next: t('next') },
   },
 })
 ```
@@ -345,16 +341,17 @@ npm run typecheck  # tsc --noEmit
 npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 ```
 
-## Roadmap
+## Features
 
-| Fase | Scope | State |
-| --- | --- | --- |
-| 0 | Core: Calendar class, stores, datelib, toolbar, navigation, theming | ✅ |
-| 1 | `day` view: time axis, overlap packing, now indicator, event hooks | ✅ |
-| 3 | `timeline` view (resources as rows, horizontal axis, grouping, custom resource columns, event stacking) | ✅ |
-| 4 | Interaction engine: drag-move, resize, drag-select, overlap/allow gating | ✅ |
-| 2 | `resource-day` view (resources as columns, grouped header, cross-column move) | ✅ |
-| 5 | Locale pack, deep-link highlight, a11y polish | ⏳ |
+- **Three views** — `day`, `resource-day` (resources as columns) and `timeline`
+  (resources as rows, horizontal axis) with grouped resources and custom resource columns
+- **Interaction** — drag-move (incl. across resources), resize, drag-select, with
+  overlap and selection gating
+- **Timezone-correct** rendering via dayjs; events placed in the configured timezone
+- **Imperative API** — drive it from any framework through a ref
+- **Real-time friendly** — add/update/remove events incrementally from a websocket
+- **Themeable** via `--zc-*` custom properties; **translatable** via the `locale` option
+- **Typed** — ships TypeScript declarations; one peer dependency (`dayjs`)
 
 ## License
 

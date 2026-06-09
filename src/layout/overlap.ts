@@ -15,7 +15,7 @@ export interface PackedEvent {
 /**
  * Pack events that share a single column (resource/day) into side-by-side
  * sub-columns so overlapping events never cover each other — the classic
- * interval-graph greedy colouring FullCalendar uses.
+ * interval-graph greedy colouring.
  *
  * Events are expected to already belong to the same column; callers filter by
  * resource first.
