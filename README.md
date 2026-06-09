@@ -5,9 +5,9 @@ replacement for the FullCalendar views DMS uses (`timeGridDay`, `resourceTimeGri
 `resourceTimeline`). No premium scheduler licence, no React/Vue/Preact dependency: a
 plain imperative class you drive through a ref from any framework.
 
-> **Status: early.** Fase 0 (core), Fase 1 (day view), Fase 3 (timeline view) and Fase 4
-> (drag/resize/select) are implemented. The `resource-day` view is still on the roadmap
-> below and currently throws a clear "not implemented yet" error.
+> **Status.** All three views (`day`, `resource-day`, `timeline`) and the full interaction
+> engine (drag/resize/select) are implemented and tested. Remaining work is polish, the DMS
+> migration and the npm release — see the roadmap below.
 
 ## Install
 
@@ -102,6 +102,13 @@ cal.render()
 
 Events on the same resource that overlap in time stack into vertical levels and the row
 grows to fit them. An event without a matching `resourceId` is not shown in the timeline.
+
+### Resource-day view (resources as columns)
+
+`view: 'resource-day'` is the `resourceTimeGridDay` equivalent: the same vertical time axis
+as the day view, but with one column per resource under a sticky, grouped header. Takes the
+same `resources` / `resourceGroupField` / `renderResource` options as the timeline. With
+`editable`, dragging an event sideways moves it to another resource column.
 
 ## Data shapes
 
@@ -294,7 +301,7 @@ npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 | 1 | `day` view: time axis, overlap packing, now indicator, event hooks | ✅ |
 | 3 | `timeline` view (resources as rows, horizontal axis, grouping, custom resource columns, event stacking) | ✅ |
 | 4 | Interaction engine: drag-move, resize, drag-select, overlap/allow gating | ✅ |
-| 2 | `resource-day` view (resources as columns) | ⏳ |
+| 2 | `resource-day` view (resources as columns, grouped header, cross-column move) | ✅ |
 | 5 | Locale pack, deep-link highlight, a11y polish | ⏳ |
 
 ## License
