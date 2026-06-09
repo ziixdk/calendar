@@ -1,0 +1,54 @@
+{
+  "name": "@ziix/calendar",
+  "version": "0.1.0",
+  "description": "Framework-agnostic resource & time-grid calendar — a from-scratch, license-free replacement for FullCalendar's scheduler views.",
+  "type": "module",
+  "license": "MIT",
+  "author": "ziix",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ziixdk/calendar.git"
+  },
+  "keywords": [
+    "calendar",
+    "scheduler",
+    "timeline",
+    "resource",
+    "timegrid",
+    "fullcalendar-alternative"
+  ],
+  "main": "./dist/ziix-calendar.js",
+  "module": "./dist/ziix-calendar.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/ziix-calendar.js"
+    },
+    "./styles.css": "./dist/ziix-calendar.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "dayjs": "^1.11.0"
+  },
+  "devDependencies": {
+    "dayjs": "^1.11.21",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.4.0",
+    "vitest": "^2.1.8"
+  }
+}

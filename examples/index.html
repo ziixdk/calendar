@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ziix/calendar — playground</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #fafafa;
+        padding: 2rem;
+      }
+      #calendar {
+        max-width: 960px;
+        margin: 0 auto;
+        border: 1px solid #e2e2e2;
+        border-radius: 10px;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="calendar"></div>
+    <script type="module">
+      import { Calendar } from '../src/index.ts'
+
+      const today = new Date().toISOString().slice(0, 10)
+      const cal = new Calendar(document.getElementById('calendar'), {
+        view: 'day',
+        timezone: 'Europe/Copenhagen',
+        date: today,
+        height: 720,
+        slot: { duration: 15, min: '06:00', max: '19:00', labelInterval: 60 },
+        nowIndicator: true,
+        locale: { code: 'da', intl: 'da-DK', firstDay: 1 },
+        events: [
+          { id: 1, title: 'Klargøring VW Golf', start: `${today}T08:00:00+02:00`, end: `${today}T09:30:00+02:00` },
+          { id: 2, title: 'Service Audi A4', start: `${today}T08:30:00+02:00`, end: `${today}T10:00:00+02:00` },
+          { id: 3, title: 'Syn', start: `${today}T11:00:00+02:00`, end: `${today}T11:45:00+02:00` },
+        ],
+        onEventClick: ({ event }) => alert(event.title),
+      })
+      cal.render()
+      window.cal = cal
+    </script>
+  </body>
+</html>

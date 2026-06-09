@@ -1,0 +1,346 @@
+import type { Dayjs } from 'dayjs'
+import type {
+  CalendarOptions,
+  ViewType,
+  CalEvent,
+  CalResource,
+  EventInput,
+  EventHandle,
+  Locale,
+  ToolbarConfig,
+} from './types'
+import { EventStore } from './store/EventStore'
+import { ResourceStore } from './store/ResourceStore'
+import { buildAxis, nowTz, toTz, intlFormat } from './datelib'
+import type { SlotAxis } from './datelib'
+import type { View } from './views/View'
+import { DayView } from './views/DayView'
+import { ResourceDayView } from './views/ResourceDayView'
+import { TimelineView } from './views/TimelineView'
+
+const DEFAULT_LOCALE: Locale = {
+  code: 'da',
+  buttons: { today: 'I dag', prev: '‹', next: '›' },
+}
+
+const DEFAULT_TOOLBAR: ToolbarConfig = { start: '', center: 'title', end: 'today prev next' }
+
+/**
+ * The public, framework-agnostic calendar. Construct with a host element and
+ * options, then `render()`. Mirrors the imperative surface hosts rely on
+ * (render/destroy/refetchEvents/addEvent/getEventById/gotoDate/changeView/…) so
+ * Preact and React callers can drive it through a ref.
+ */
+export class Calendar {
+  readonly el: HTMLElement
+  options: CalendarOptions
+  readonly events: EventStore
+  readonly resources: ResourceStore
+
+  private _date: Dayjs
+  private _view: ViewType
+  private viewImpl: View | null = null
+  private bodyEl: HTMLElement | null = null
+  private titleEl: HTMLElement | null = null
+
+  constructor(el: HTMLElement, options: CalendarOptions = {}) {
+    this.el = el
+    this.options = options
+    this.events = new EventStore(options.timezone)
+    this.resources = new ResourceStore(
+      options.resourceGroupField ?? 'group',
+      options.resourceOrder ?? 'order',
+    )
+    this._view = options.view ?? 'day'
+    this._date = options.date ? toTz(options.date, options.timezone) : nowTz(options.timezone)
+    if (Array.isArray(options.resources)) this.resources.set(options.resources)
+    if (Array.isArray(options.events)) this.events.set(options.events)
+  }
+
+  // ---- derived state -------------------------------------------------------
+
+  get tz(): string | undefined {
+    return this.options.timezone
+  }
+
+  get date(): Dayjs {
+    return this._date
+  }
+
+  get view(): ViewType {
+    return this._view
+  }
+
+  get axis(): SlotAxis {
+    return buildAxis(this.options.slot)
+  }
+
+  get locale(): Locale {
+    const l = this.options.locale
+    if (!l) return DEFAULT_LOCALE
+    if (typeof l === 'string') return { ...DEFAULT_LOCALE, code: l }
+    return { ...DEFAULT_LOCALE, ...l, buttons: { ...DEFAULT_LOCALE.buttons, ...l.buttons } }
+  }
+
+  get firstDay(): number {
+    return this.locale.firstDay ?? this.options.firstDay ?? 1
+  }
+
+  now(): Dayjs {
+    return nowTz(this.tz)
+  }
+
+  // ---- lifecycle -----------------------------------------------------------
+
+  render(): this {
+    this.el.classList.add('zc')
+    this.el.innerHTML = ''
+    if (this.options.height != null) {
+      this.el.style.height =
+        typeof this.options.height === 'number' ? `${this.options.height}px` : this.options.height
+    }
+    this.renderToolbar()
+    this.bodyEl = document.createElement('div')
+    this.bodyEl.className = 'zc-body'
+    this.el.appendChild(this.bodyEl)
+    this.mountView()
+    void this.reload()
+    return this
+  }
+
+  destroy(): void {
+    this.viewImpl?.unmount()
+    this.viewImpl = null
+    this.el.innerHTML = ''
+    this.el.classList.remove('zc')
+  }
+
+  // ---- views ---------------------------------------------------------------
+
+  private createView(type: ViewType): View {
+    const root = this.bodyEl
+    if (!root) throw new Error('[@ziix/calendar] render() must run before a view is created')
+    switch (type) {
+      case 'day':
+        return new DayView(this, root)
+      case 'resource-day':
+        return new ResourceDayView(this, root)
+      case 'timeline':
+        return new TimelineView(this, root)
+      default:
+        throw new Error(`[@ziix/calendar] unknown view: ${String(type)}`)
+    }
+  }
+
+  private mountView(): void {
+    if (!this.bodyEl) return
+    this.viewImpl?.unmount()
+    this.bodyEl.innerHTML = ''
+    this.viewImpl = this.createView(this._view)
+    this.viewImpl.mount()
+    this.updateTitle()
+    this.emitDatesSet()
+  }
+
+  changeView(type: ViewType): void {
+    this._view = type
+    this.mountView()
+    void this.reload()
+  }
+
+  // ---- navigation ----------------------------------------------------------
+
+  gotoDate(date: string | Date | Dayjs): void {
+    this._date = toTz(date as string | Date, this.tz)
+    this.mountView()
+    void this.reload()
+  }
+
+  today(): void {
+    this.gotoDate(this.now())
+  }
+
+  prev(): void {
+    this.gotoDate(this._date.subtract(1, 'day'))
+  }
+
+  next(): void {
+    this.gotoDate(this._date.add(1, 'day'))
+  }
+
+  // ---- data ----------------------------------------------------------------
+
+  /** Refetch resources (if a function source), rebuild structure, then events. */
+  async reload(): Promise<void> {
+    if (typeof this.options.resources === 'function') {
+      await this.refetchResources()
+      this.mountView()
+    }
+    await this.refetchEvents()
+  }
+
+  private async refetchResources(): Promise<void> {
+    const src = this.options.resources
+    if (typeof src !== 'function') return
+    const range = this.viewImpl?.range()
+    if (!range) return
+    this.resources.set(await src(range))
+  }
+
+  async refetchEvents(): Promise<void> {
+    const src = this.options.events
+    const range = this.viewImpl?.range()
+    if (typeof src === 'function' && range) {
+      this.events.set(await src(range))
+    }
+    this.options.onEventsSet?.(this.events.all())
+    this.viewImpl?.renderEvents()
+  }
+
+  addEvent(input: EventInput): EventHandle {
+    const e = this.events.add(input)
+    this.viewImpl?.renderEvents()
+    return this.handle(e)
+  }
+
+  getEventById(id: string | number): EventHandle | null {
+    const e = this.events.get(id)
+    return e ? this.handle(e) : null
+  }
+
+  getEvents(): CalEvent[] {
+    return this.events.all()
+  }
+
+  getResources(): CalResource[] {
+    return this.resources.all()
+  }
+
+  getResourceById(id: string | number): CalResource | null {
+    return this.resources.get(id) ?? null
+  }
+
+  private handle(e: CalEvent): EventHandle {
+    return {
+      id: e.id,
+      event: e,
+      remove: () => {
+        this.events.remove(e.id)
+        this.viewImpl?.renderEvents()
+      },
+      setExtendedProp: (key, value) => {
+        e.extendedProps[key] = value
+        this.viewImpl?.renderEvents()
+      },
+    }
+  }
+
+  // ---- rendering helpers used by views ------------------------------------
+
+  /** Build the inner body of an event, honouring the `renderEvent` hook. */
+  renderEventContent(event: CalEvent): HTMLElement {
+    const wrap = document.createElement('div')
+    wrap.className = 'zc-event-main'
+    const custom = this.options.renderEvent?.(event)
+    if (custom != null) {
+      if (typeof custom === 'string') wrap.innerHTML = custom
+      else wrap.appendChild(custom)
+    } else {
+      wrap.appendChild(this.defaultEventContent(event))
+    }
+    return wrap
+  }
+
+  private defaultEventContent(event: CalEvent): HTMLElement {
+    const frag = document.createElement('div')
+    frag.className = 'zc-event-default'
+    const time = document.createElement('span')
+    time.className = 'zc-event-time'
+    const fmt = this.options.timeFormat ?? { hour: '2-digit', minute: '2-digit', hour12: false }
+    time.textContent = intlFormat(event.start, fmt, this.locale.intl ?? this.locale.code, this.tz)
+    const title = document.createElement('span')
+    title.className = 'zc-event-title'
+    title.textContent = event.title
+    frag.append(time, title)
+    return frag
+  }
+
+  // ---- callback dispatch (called by views) --------------------------------
+
+  fireEventClick(event: CalEvent, el: HTMLElement, jsEvent: MouseEvent): void {
+    this.options.onEventClick?.({ event, el, jsEvent })
+  }
+
+  fireEventMount(event: CalEvent, el: HTMLElement): void {
+    this.options.onEventMount?.({ event, el })
+  }
+
+  // ---- toolbar -------------------------------------------------------------
+
+  private renderToolbar(): void {
+    if (this.options.toolbar === false) return
+    const cfg = this.options.toolbar ?? DEFAULT_TOOLBAR
+    const toolbar = document.createElement('div')
+    toolbar.className = 'zc-toolbar'
+    for (const section of ['start', 'center', 'end'] as const) {
+      const sec = document.createElement('div')
+      sec.className = `zc-toolbar-section zc-toolbar-${section}`
+      const spec = cfg[section]
+      if (spec) {
+        for (const token of spec.split(/\s+/).filter(Boolean)) {
+          sec.appendChild(this.renderToolbarToken(token))
+        }
+      }
+      toolbar.appendChild(sec)
+    }
+    this.el.appendChild(toolbar)
+  }
+
+  private renderToolbarToken(token: string): HTMLElement {
+    if (token === 'title') {
+      this.titleEl = document.createElement('h2')
+      this.titleEl.className = 'zc-title'
+      return this.titleEl
+    }
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'zc-btn'
+    btn.dataset.zcButton = token
+    const labels = this.locale.buttons ?? {}
+    if (token === 'today') {
+      btn.textContent = labels.today ?? 'Today'
+      btn.onclick = () => this.today()
+    } else if (token === 'prev') {
+      btn.textContent = labels.prev ?? '‹'
+      btn.setAttribute('aria-label', 'Previous')
+      btn.onclick = () => this.prev()
+    } else if (token === 'next') {
+      btn.textContent = labels.next ?? '›'
+      btn.setAttribute('aria-label', 'Next')
+      btn.onclick = () => this.next()
+    } else {
+      const custom = this.options.buttons?.[token]
+      if (custom) {
+        if (custom.icon) {
+          const icon = document.createElement('span')
+          icon.className = custom.icon
+          btn.appendChild(icon)
+        }
+        if (custom.text) btn.appendChild(document.createTextNode(custom.text))
+        btn.onclick = (jsEvent) => custom.onClick(jsEvent)
+      } else {
+        btn.textContent = token
+      }
+    }
+    return btn
+  }
+
+  private updateTitle(): void {
+    if (this.titleEl) this.titleEl.textContent = this.viewImpl?.title() ?? ''
+  }
+
+  private emitDatesSet(): void {
+    const r = this.viewImpl?.range()
+    if (r) this.options.onDatesSet?.({ start: r.start, end: r.end, view: this._view })
+  }
+}
