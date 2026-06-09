@@ -1,7 +1,9 @@
 import type { Calendar } from '../Calendar'
+import type { Dayjs } from 'dayjs'
 import type { DateRange, CalEvent } from '../types'
 import { dayMinutes, minutesToTime, intlFormat } from '../datelib'
 import { packEvents } from '../layout/overlap'
+import { startDrag, snap } from '../interaction/pointer'
 import { el, clamp, type View } from './View'
 
 /** Pixel height of one slot-duration on the time axis. */
@@ -73,6 +75,7 @@ export class DayView implements View {
     this.grid.appendChild(axisCol)
     this.grid.appendChild(this.content)
     this.root.appendChild(this.grid)
+    this.bindSelect()
     this.renderEvents()
   }
 
@@ -106,14 +109,122 @@ export class DayView implements View {
       if (ev.color) node.style.setProperty('--zc-event-bg', ev.color)
       if (ev.textColor) node.style.setProperty('--zc-event-fg', ev.textColor)
       node.appendChild(this.cal.renderEventContent(ev))
-      node.addEventListener('click', (jsEvent) =>
-        this.cal.fireEventClick(ev, node, jsEvent as MouseEvent),
-      )
+      this.bindBar(node, ev)
       this.content.appendChild(node)
       this.cal.fireEventMount(ev, node)
     }
 
     this.renderNowIndicator()
+  }
+
+  // ---- interaction (Fase 4) ------------------------------------------------
+
+  private timeAt(minute: number): Dayjs {
+    return this.cal.date.startOf('day').add(minute, 'minute')
+  }
+
+  private minuteAtY(clientY: number): number {
+    const rect = this.content!.getBoundingClientRect()
+    return this.cal.axis.min + (clientY - rect.top) / this.pxPerMinute
+  }
+
+  /** Wire click, drag-move and resize on an event bar (or just click if read-only). */
+  private bindBar(bar: HTMLElement, ev: CalEvent): void {
+    this.cal.bindContextMenu(bar, ev)
+    if (!this.cal.editable) {
+      bar.addEventListener('click', (jsEvent) => this.cal.fireEventClick(ev, bar, jsEvent))
+      return
+    }
+    bar.style.cursor = 'move'
+
+    const handle = el('div', 'zc-resize-handle zc-resize-s')
+    bar.appendChild(handle)
+    handle.addEventListener('pointerdown', (down) => this.beginResize(down, bar, ev))
+
+    bar.addEventListener('pointerdown', (down) => {
+      if (down.button !== 0) return
+      if ((down.target as HTMLElement).closest('.zc-resize-handle')) return
+      down.preventDefault()
+      const axis = this.cal.axis
+      const durMin = ev.end.diff(ev.start, 'minute')
+      const origStartMin = dayMinutes(ev.start)
+      const grabMin = this.minuteAtY(down.clientY)
+      const place = (clientY: number): number =>
+        clamp(
+          snap(origStartMin + (this.minuteAtY(clientY) - grabMin), axis.duration),
+          axis.min,
+          axis.max - durMin,
+        )
+      startDrag(down, {
+        onStart: () => bar.classList.add('zc-dragging'),
+        onMove: ({ event }) => {
+          bar.style.top = `${(place(event.clientY) - axis.min) * this.pxPerMinute}px`
+        },
+        onEnd: ({ moved, event }) => {
+          bar.classList.remove('zc-dragging')
+          if (!moved) {
+            this.cal.fireEventClick(ev, bar, event)
+            return
+          }
+          const newStart = this.timeAt(place(event.clientY))
+          this.cal.commitEventChange(ev, newStart, newStart.add(durMin, 'minute'), ev.resourceId)
+        },
+      })
+    })
+  }
+
+  private beginResize(down: MouseEvent, bar: HTMLElement, ev: CalEvent): void {
+    if (down.button !== 0) return
+    down.stopPropagation()
+    down.preventDefault()
+    const axis = this.cal.axis
+    const startMin = dayMinutes(ev.start)
+    const endAt = (clientY: number): number =>
+      clamp(snap(this.minuteAtY(clientY), axis.duration), startMin + axis.duration, axis.max)
+    startDrag(down, {
+      onStart: () => bar.classList.add('zc-dragging'),
+      onMove: ({ event }) => {
+        bar.style.height = `${(endAt(event.clientY) - startMin) * this.pxPerMinute}px`
+      },
+      onEnd: ({ moved, event }) => {
+        bar.classList.remove('zc-dragging')
+        if (!moved) return
+        this.cal.commitEventChange(ev, ev.start, this.timeAt(endAt(event.clientY)), ev.resourceId)
+      },
+    })
+  }
+
+  private bindSelect(): void {
+    if (!this.cal.selectable || !this.content) return
+    this.content.addEventListener('pointerdown', (down) => {
+      if (down.button !== 0) return
+      if ((down.target as HTMLElement).closest('.zc-event')) return
+      down.preventDefault()
+      const axis = this.cal.axis
+      const anchor = clamp(snap(this.minuteAtY(down.clientY), axis.duration), axis.min, axis.max)
+      const box = el('div', 'zc-select-box')
+      this.content!.appendChild(box)
+      const place = (clientY: number) => {
+        const cur = clamp(snap(this.minuteAtY(clientY), axis.duration), axis.min, axis.max)
+        const lo = Math.min(anchor, cur)
+        const hi = Math.max(anchor, cur)
+        box.style.top = `${(lo - axis.min) * this.pxPerMinute}px`
+        box.style.height = `${(hi - lo) * this.pxPerMinute}px`
+      }
+      startDrag(down, {
+        onMove: ({ event }) => place(event.clientY),
+        onEnd: ({ moved, event }) => {
+          box.remove()
+          if (!moved) return
+          const cur = clamp(snap(this.minuteAtY(event.clientY), axis.duration), axis.min, axis.max)
+          let lo = Math.min(anchor, cur)
+          let hi = Math.max(anchor, cur)
+          if (hi <= lo) hi = Math.min(lo + axis.duration, axis.max)
+          if (hi <= lo) return
+          this.cal.commitSelect(this.timeAt(lo), this.timeAt(hi), null, event)
+        },
+      })
+    })
   }
 
   protected renderNowIndicator(): void {

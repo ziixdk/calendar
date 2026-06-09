@@ -18,6 +18,38 @@
         border-radius: 10px;
         background: #fff;
       }
+      .demo-menu {
+        position: fixed;
+        z-index: 1000;
+        min-width: 180px;
+        background: #fff;
+        border: 1px solid #e2e2e2;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+        padding: 4px;
+        font-size: 0.875rem;
+      }
+      .demo-menu-title {
+        padding: 6px 10px 4px;
+        font-weight: 600;
+        color: #555;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 4px;
+      }
+      .demo-menu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 7px 10px;
+        border: 0;
+        background: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .demo-menu button:hover {
+        background: #f0f6ff;
+      }
     </style>
   </head>
   <body>
@@ -27,22 +59,93 @@
 
       const today = new Date().toISOString().slice(0, 10)
       const cal = new Calendar(document.getElementById('calendar'), {
-        view: 'day',
+        view: 'timeline',
         timezone: 'Europe/Copenhagen',
         date: today,
         height: 720,
         slot: { duration: 15, min: '06:00', max: '19:00', labelInterval: 60 },
         nowIndicator: true,
+        dayClosed: (d) => d.day() === 0, // tint Sundays as closed — navigate to one to see it
+        editable: true,
+        selectable: true,
+        eventOverlap: true,
+        onEventChange: ({ event }) => console.log('moved', event.id, event.start.format(), '→', event.resourceId),
+        onSelect: ({ start, end, resource }) => console.log('select', start.format(), end.format(), resource?.id),
+        onEventContextMenu: ({ event, jsEvent }) => {
+          showMenu(jsEvent.clientX, jsEvent.clientY, event.title, [
+            { label: 'Åbn ordre', run: () => alert('Åbn ' + event.title) },
+            { label: 'Markér som færdig', run: () => alert('Færdig: ' + event.title) },
+            { label: 'Slet', run: () => cal.getEventById(event.id)?.remove() },
+          ])
+        },
         locale: { code: 'da', intl: 'da-DK', firstDay: 1 },
+        resourceGroupField: 'group',
+        resourceArea: {
+          width: '25%',
+          columns: [
+            { field: 'title', header: 'Afdelinger' },
+            { header: 'Tider', render: (r) => `<small style="color:#888">${r.id}</small>` },
+          ],
+        },
+        buttons: {
+          toggle: {
+            text: 'Skift view',
+            onClick: () => {
+              const order = ['timeline', 'resource-day', 'day']
+              cal.changeView(order[(order.indexOf(cal.view) + 1) % order.length])
+            },
+          },
+        },
+        toolbar: { start: 'toggle', center: 'title', end: 'today prev next' },
+        resources: [
+          { id: 'E1', title: 'Anders', group: 'Mekanik' },
+          { id: 'E2', title: 'Bo', group: 'Mekanik' },
+          { id: 'C1', title: 'Lånebil 1', group: 'Biler' },
+          { id: 'C2', title: 'Lånebil 2', group: 'Biler' },
+        ],
         events: [
-          { id: 1, title: 'Klargøring VW Golf', start: `${today}T08:00:00+02:00`, end: `${today}T09:30:00+02:00` },
-          { id: 2, title: 'Service Audi A4', start: `${today}T08:30:00+02:00`, end: `${today}T10:00:00+02:00` },
-          { id: 3, title: 'Syn', start: `${today}T11:00:00+02:00`, end: `${today}T11:45:00+02:00` },
+          { id: 1, title: 'Klargøring VW Golf', start: `${today}T08:00:00+02:00`, end: `${today}T09:30:00+02:00`, resourceId: 'E1' },
+          { id: 2, title: 'Service Audi A4', start: `${today}T08:30:00+02:00`, end: `${today}T10:00:00+02:00`, resourceId: 'E1' },
+          { id: 3, title: 'Syn', start: `${today}T11:00:00+02:00`, end: `${today}T11:45:00+02:00`, resourceId: 'E2' },
+          { id: 4, title: 'Udlejning', start: `${today}T09:00:00+02:00`, end: `${today}T15:00:00+02:00`, resourceId: 'C1' },
         ],
         onEventClick: ({ event }) => alert(event.title),
       })
       cal.render()
       window.cal = cal
+
+      // Minimal demo context menu — in DMS this lives in calendarUtils.js.
+      let openMenu = null
+      function closeMenu() {
+        openMenu?.remove()
+        openMenu = null
+      }
+      function showMenu(x, y, title, items) {
+        closeMenu()
+        const menu = document.createElement('div')
+        menu.className = 'demo-menu'
+        menu.style.left = x + 'px'
+        menu.style.top = y + 'px'
+        const head = document.createElement('div')
+        head.className = 'demo-menu-title'
+        head.textContent = title
+        menu.appendChild(head)
+        for (const item of items) {
+          const btn = document.createElement('button')
+          btn.textContent = item.label
+          btn.onclick = () => {
+            closeMenu()
+            item.run()
+          }
+          menu.appendChild(btn)
+        }
+        document.body.appendChild(menu)
+        openMenu = menu
+      }
+      document.addEventListener('pointerdown', (e) => {
+        if (openMenu && !openMenu.contains(e.target)) closeMenu()
+      })
+      document.addEventListener('keydown', (e) => e.key === 'Escape' && closeMenu())
     </script>
   </body>
 </html>

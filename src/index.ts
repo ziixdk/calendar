@@ -33,9 +33,11 @@ export type {
   ResourceSource,
   SelectInfo,
   EventClickInfo,
+  EventContextMenuInfo,
   EventMountInfo,
   EventChangeInfo,
   DatesSetInfo,
   EventHandle,
+  ResourceHandle,
   CalendarOptions,
 } from './types'

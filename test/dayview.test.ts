@@ -66,8 +66,9 @@ describe('DayView rendering', () => {
     expect(host.querySelectorAll('.zc-event').length).toBe(2)
   })
 
-  it('throws a clear error for not-yet-implemented views', () => {
-    const cal = new Calendar(host, { view: 'timeline' })
-    expect(() => cal.render()).toThrow(/timeline.*not implemented/i)
+  it('throws a clear error for an unknown view type', () => {
+    // cast past the type guard to exercise the runtime fallback
+    const cal = new Calendar(host, { view: 'agenda' as 'day' })
+    expect(() => cal.render()).toThrow(/unknown view/i)
   })
 })

@@ -44,6 +44,8 @@ export interface ResourceInput {
   title?: string
   group?: string
   order?: number
+  /** Arbitrary domain data (e.g. workHours, punchinout, badges). */
+  extendedProps?: Record<string, unknown>
   [key: string]: unknown
 }
 
@@ -68,10 +70,18 @@ export interface CalResource {
   title: string
   group: string | null
   order: number
+  /** Arbitrary domain data, mutable via the resource handle's setExtendedProp. */
+  extendedProps: Record<string, unknown>
   raw: ResourceInput
 }
 
-/** Locale strings and behaviour. */
+/**
+ * Locale strings and behaviour. This is the single place every piece of text the
+ * calendar renders itself can be translated — pass your app's translations here.
+ * All other visible text (column headers, resource labels, event content) is
+ * supplied by you through the render hooks, and dates are formatted via `Intl`
+ * using `intl`.
+ */
 export interface Locale {
   /** BCP-47-ish code, e.g. 'da'. */
   code: string
@@ -79,6 +89,8 @@ export interface Locale {
   firstDay?: number
   /** Toolbar button labels. */
   buttons?: { today?: string; prev?: string; next?: string }
+  /** Accessible labels for icon buttons. */
+  ariaLabels?: { today?: string; prev?: string; next?: string }
   /** Intl locale tag for date formatting; defaults to `code`. */
   intl?: string
 }
@@ -132,6 +144,13 @@ export interface EventClickInfo {
   jsEvent: MouseEvent
 }
 
+export interface EventContextMenuInfo {
+  event: CalEvent
+  el: HTMLElement
+  /** The contextmenu event; `preventDefault()` has already been called. */
+  jsEvent: MouseEvent
+}
+
 export interface EventMountInfo {
   event: CalEvent
   el: HTMLElement
@@ -140,6 +159,8 @@ export interface EventMountInfo {
 export interface EventChangeInfo {
   event: CalEvent
   oldEvent: CalEvent
+  /** Undo the change (e.g. when a server persist fails) and re-render. */
+  revert: () => void
 }
 
 export interface DatesSetInfo {
@@ -156,6 +177,16 @@ export interface EventHandle {
   setExtendedProp(key: string, value: unknown): void
 }
 
+/** Handle returned by getResourceById; lets hosts push live data into a resource. */
+export interface ResourceHandle {
+  id: string
+  resource: CalResource
+  /** Update an extendedProps value and re-render the resource area. */
+  setExtendedProp(key: string, value: unknown): void
+  /** Update a top-level resource field (e.g. title) and re-render. */
+  setProp(key: 'title' | 'group', value: string): void
+}
+
 export interface CalendarOptions {
   view?: ViewType
   date?: string | Date
@@ -167,9 +198,21 @@ export interface CalendarOptions {
   /** Intl options for the default event time rendering. */
   timeFormat?: Intl.DateTimeFormatOptions
   nowIndicator?: boolean
+  /**
+   * Mark the shown day as closed/non-business — tints the time grid with the
+   * `--zc-nonbusiness` colour. Pass a boolean, or a predicate evaluated against
+   * the current date (re-evaluated on navigation).
+   */
+  dayClosed?: boolean | ((date: Dayjs) => boolean)
   editable?: boolean
   selectable?: boolean
   height?: number | string
+  /**
+   * Minimum height (px) of a single stacked event in the timeline. The resource
+   * row grows to `levels × eventMinHeight` so overlapping events keep this height
+   * instead of being squashed. Default 48.
+   */
+  eventMinHeight?: number
   toolbar?: ToolbarConfig | false
   buttons?: Record<string, CustomButton>
   resources?: ResourceSource
@@ -184,6 +227,8 @@ export interface CalendarOptions {
   eventOverlap?: boolean | (() => boolean)
   selectAllow?: (info: { start: Dayjs; end: Dayjs; resource: CalResource | null }) => boolean
   onEventClick?: (info: EventClickInfo) => void
+  /** Right-click on an event. The native menu is suppressed before this fires. */
+  onEventContextMenu?: (info: EventContextMenuInfo) => void
   onEventChange?: (info: EventChangeInfo) => void
   onSelect?: (info: SelectInfo) => void
   onDatesSet?: (info: DatesSetInfo) => void

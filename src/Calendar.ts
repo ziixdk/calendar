@@ -6,6 +6,7 @@ import type {
   CalResource,
   EventInput,
   EventHandle,
+  ResourceHandle,
   Locale,
   ToolbarConfig,
 } from './types'
@@ -18,9 +19,12 @@ import { DayView } from './views/DayView'
 import { ResourceDayView } from './views/ResourceDayView'
 import { TimelineView } from './views/TimelineView'
 
+// Neutral English defaults — every label is overridable via the `locale` option,
+// so a host app passes its own translations (DMS feeds its trans() values in).
 const DEFAULT_LOCALE: Locale = {
-  code: 'da',
-  buttons: { today: 'I dag', prev: '‹', next: '›' },
+  code: 'en',
+  buttons: { today: 'Today', prev: '‹', next: '›' },
+  ariaLabels: { today: 'Today', prev: 'Previous', next: 'Next' },
 }
 
 const DEFAULT_TOOLBAR: ToolbarConfig = { start: '', center: 'title', end: 'today prev next' }
@@ -79,11 +83,45 @@ export class Calendar {
     const l = this.options.locale
     if (!l) return DEFAULT_LOCALE
     if (typeof l === 'string') return { ...DEFAULT_LOCALE, code: l }
-    return { ...DEFAULT_LOCALE, ...l, buttons: { ...DEFAULT_LOCALE.buttons, ...l.buttons } }
+    return {
+      ...DEFAULT_LOCALE,
+      ...l,
+      buttons: { ...DEFAULT_LOCALE.buttons, ...l.buttons },
+      ariaLabels: { ...DEFAULT_LOCALE.ariaLabels, ...l.ariaLabels },
+    }
   }
 
   get firstDay(): number {
     return this.locale.firstDay ?? this.options.firstDay ?? 1
+  }
+
+  /** Start of the currently-shown view range, in the calendar timezone. */
+  get activeStart(): Dayjs {
+    return this.viewImpl?.range().start ?? this._date.startOf('day')
+  }
+
+  /** End of the currently-shown view range. */
+  get activeEnd(): Dayjs {
+    return this.viewImpl?.range().end ?? this._date.endOf('day')
+  }
+
+  /** The active view's type and date window (parity with FullCalendar's `view`). */
+  getView(): { type: ViewType; activeStart: Dayjs; activeEnd: Dayjs } {
+    return { type: this._view, activeStart: this.activeStart, activeEnd: this.activeEnd }
+  }
+
+  private isDayClosed(): boolean {
+    const d = this.options.dayClosed
+    if (d === undefined) return false
+    return typeof d === 'function' ? d(this._date) : d
+  }
+
+  get editable(): boolean {
+    return this.options.editable === true
+  }
+
+  get selectable(): boolean {
+    return this.options.selectable === true
   }
 
   now(): Dayjs {
@@ -138,6 +176,7 @@ export class Calendar {
     this.bodyEl.innerHTML = ''
     this.viewImpl = this.createView(this._view)
     this.viewImpl.mount()
+    this.bodyEl.classList.toggle('zc-closed', this.isDayClosed())
     this.updateTitle()
     this.emitDatesSet()
   }
@@ -216,8 +255,25 @@ export class Calendar {
     return this.resources.all()
   }
 
-  getResourceById(id: string | number): CalResource | null {
-    return this.resources.get(id) ?? null
+  getResourceById(id: string | number): ResourceHandle | null {
+    const r = this.resources.get(id)
+    return r ? this.resourceHandle(r) : null
+  }
+
+  private resourceHandle(r: CalResource): ResourceHandle {
+    return {
+      id: r.id,
+      resource: r,
+      setExtendedProp: (key, value) => {
+        r.extendedProps[key] = value
+        this.viewImpl?.renderEvents()
+      },
+      setProp: (key, value) => {
+        if (key === 'title') r.title = value
+        else r.group = value
+        this.viewImpl?.renderEvents()
+      },
+    }
   }
 
   private handle(e: CalEvent): EventHandle {
@@ -275,6 +331,78 @@ export class Calendar {
     this.options.onEventMount?.({ event, el })
   }
 
+  /** Attach a right-click handler to an event bar when `onEventContextMenu` is set. */
+  bindContextMenu(el: HTMLElement, event: CalEvent): void {
+    const handler = this.options.onEventContextMenu
+    if (!handler) return
+    el.addEventListener('contextmenu', (jsEvent) => {
+      jsEvent.preventDefault()
+      handler({ event, el, jsEvent })
+    })
+  }
+
+  /** Whether events are allowed to overlap on the same resource (default true). */
+  private allowsOverlap(): boolean {
+    const o = this.options.eventOverlap
+    if (o === undefined) return true
+    return typeof o === 'function' ? o() : o
+  }
+
+  private hasCollision(event: CalEvent, start: Dayjs, end: Dayjs, resourceId: string | null): boolean {
+    return this.events
+      .all()
+      .some(
+        (e) =>
+          e.id !== event.id &&
+          e.resourceId === resourceId &&
+          e.start.isBefore(end) &&
+          e.end.isAfter(start),
+      )
+  }
+
+  /**
+   * Apply a drag/resize result: gate on `eventOverlap`, mutate the event,
+   * re-render, and fire `onEventChange`. Returns false (and reverts the live
+   * preview by re-rendering) when the move is rejected.
+   */
+  commitEventChange(
+    event: CalEvent,
+    start: Dayjs,
+    end: Dayjs,
+    resourceId: string | null,
+  ): boolean {
+    const unchanged =
+      event.start.isSame(start) && event.end.isSame(end) && event.resourceId === resourceId
+    if (unchanged) {
+      this.viewImpl?.renderEvents()
+      return false
+    }
+    if (!this.allowsOverlap() && this.hasCollision(event, start, end, resourceId)) {
+      this.viewImpl?.renderEvents()
+      return false
+    }
+    const oldEvent: CalEvent = { ...event }
+    event.start = start
+    event.end = end
+    event.resourceId = resourceId
+    this.viewImpl?.renderEvents()
+    const revert = () => {
+      event.start = oldEvent.start
+      event.end = oldEvent.end
+      event.resourceId = oldEvent.resourceId
+      this.viewImpl?.renderEvents()
+    }
+    this.options.onEventChange?.({ event, oldEvent, revert })
+    return true
+  }
+
+  /** Gate a drag-selection on `selectAllow`, then fire `onSelect`. */
+  commitSelect(start: Dayjs, end: Dayjs, resource: CalResource | null, jsEvent: MouseEvent): boolean {
+    if (this.options.selectAllow && !this.options.selectAllow({ start, end, resource })) return false
+    this.options.onSelect?.({ start, end, resource, jsEvent })
+    return true
+  }
+
   // ---- toolbar -------------------------------------------------------------
 
   private renderToolbar(): void {
@@ -287,8 +415,18 @@ export class Calendar {
       sec.className = `zc-toolbar-section zc-toolbar-${section}`
       const spec = cfg[section]
       if (spec) {
-        for (const token of spec.split(/\s+/).filter(Boolean)) {
-          sec.appendChild(this.renderToolbarToken(token))
+        // Whitespace separates button groups (gap between them); commas join
+        // buttons within a group with no gap — e.g. 'today prev,next'.
+        for (const group of spec.split(/\s+/).filter(Boolean)) {
+          const tokens = group.split(',').filter(Boolean)
+          if (tokens.length === 1 && tokens[0] === 'title') {
+            sec.appendChild(this.renderToolbarToken('title'))
+            continue
+          }
+          const groupEl = document.createElement('div')
+          groupEl.className = 'zc-btn-group'
+          for (const token of tokens) groupEl.appendChild(this.renderToolbarToken(token))
+          sec.appendChild(groupEl)
         }
       }
       toolbar.appendChild(sec)
@@ -307,16 +445,18 @@ export class Calendar {
     btn.className = 'zc-btn'
     btn.dataset.zcButton = token
     const labels = this.locale.buttons ?? {}
+    const aria = this.locale.ariaLabels ?? {}
     if (token === 'today') {
       btn.textContent = labels.today ?? 'Today'
+      if (aria.today) btn.setAttribute('aria-label', aria.today)
       btn.onclick = () => this.today()
     } else if (token === 'prev') {
       btn.textContent = labels.prev ?? '‹'
-      btn.setAttribute('aria-label', 'Previous')
+      btn.setAttribute('aria-label', aria.prev ?? 'Previous')
       btn.onclick = () => this.prev()
     } else if (token === 'next') {
       btn.textContent = labels.next ?? '›'
-      btn.setAttribute('aria-label', 'Next')
+      btn.setAttribute('aria-label', aria.next ?? 'Next')
       btn.onclick = () => this.next()
     } else {
       const custom = this.options.buttons?.[token]

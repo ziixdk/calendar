@@ -17,6 +17,7 @@ export class ResourceStore {
       title: input.title ?? '',
       group: groupVal != null ? String(groupVal) : null,
       order: typeof orderVal === 'number' ? orderVal : 0,
+      extendedProps: input.extendedProps ?? {},
       raw: input,
     }
   }
@@ -34,16 +35,19 @@ export class ResourceStore {
   }
 
   /**
-   * Resources sorted by the order field. When the order field is `id` (or all
-   * orders are equal) falls back to a natural id comparison so 'E2' precedes
-   * 'E10'.
+   * Resources in display order. With `resourceOrder: 'id'` they are sorted by a
+   * natural id comparison (so 'E2' precedes 'E10'); with a numeric order field
+   * they sort by it; otherwise the original input order is preserved (sort is
+   * stable), matching FullCalendar's default.
    */
   ordered(): CalResource[] {
-    const useId = this.orderField === 'id' || this.list.every((r) => r.order === 0)
-    return [...this.list].sort((a, b) => {
-      if (!useId && a.order !== b.order) return a.order - b.order
-      return a.id.localeCompare(b.id, undefined, { numeric: true })
-    })
+    if (this.orderField === 'id') {
+      return [...this.list].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+    }
+    if (this.list.every((r) => r.order === 0)) {
+      return [...this.list] // no explicit order → keep input order
+    }
+    return [...this.list].sort((a, b) => a.order - b.order)
   }
 
   /**
