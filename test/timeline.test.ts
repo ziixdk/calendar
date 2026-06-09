@@ -56,12 +56,21 @@ describe('TimelineView rendering', () => {
     expect(bar.style.width).toBe('45px')
   })
 
-  it('stacks overlapping events into vertical levels (taller row)', () => {
+  it('stacks overlapping events into vertical levels and grows the row to fit', () => {
     build()
     const e1Row = host.querySelector<HTMLElement>('.zc-tl-row[data-resource-id="E1"]')!
     const bars = e1Row.querySelectorAll<HTMLElement>('.zc-event')
     // two overlapping events → different vertical offsets
     expect(bars[0].style.top).not.toBe(bars[1].style.top)
+    // row height = levels(2) * eventMinHeight(48) + 2*PAD(4) = 104; events keep ~min height
+    expect(e1Row.style.height).toBe('104px')
+    expect(parseInt(bars[0].style.height, 10)).toBeGreaterThanOrEqual(44)
+  })
+
+  it('respects a custom eventMinHeight for stacked rows', () => {
+    build({ eventMinHeight: 60 })
+    const e1Row = host.querySelector<HTMLElement>('.zc-tl-row[data-resource-id="E1"]')!
+    expect(e1Row.style.height).toBe('128px') // 2*60 + 8
   })
 
   it('renders custom resource-area columns', () => {
