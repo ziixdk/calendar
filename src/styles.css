@@ -1,0 +1,197 @@
+/*
+ * @ziix/calendar base styles.
+ *
+ * Everything is driven by --zc-* custom properties so a host app can remap them
+ * to its own design tokens (DMS maps them to its OKLCH palette). Override the
+ * variables on `.zc` or any ancestor; never restyle internals directly.
+ */
+.zc {
+  --zc-border: #e2e2e2;
+  --zc-bg: #ffffff;
+  --zc-muted-bg: #f6f6f6;
+  --zc-fg: #1a1a1a;
+  --zc-muted-fg: #6b7280;
+  --zc-today-bg: #f0f6ff;
+  --zc-now: #ef4444;
+
+  --zc-btn-bg: transparent;
+  --zc-btn-fg: var(--zc-fg);
+  --zc-btn-border: var(--zc-border);
+  --zc-btn-hover-bg: var(--zc-muted-bg);
+  --zc-btn-active-bg: #e7efff;
+
+  --zc-event-bg: #c7dbff;
+  --zc-event-border: #a9c6ff;
+  --zc-event-fg: #1e3a5f;
+
+  --zc-radius: 6px;
+  --zc-font: inherit;
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  font-family: var(--zc-font);
+  color: var(--zc-fg);
+  background: var(--zc-bg);
+}
+
+.zc *,
+.zc *::before,
+.zc *::after {
+  box-sizing: border-box;
+}
+
+/* ---- toolbar ------------------------------------------------------------- */
+.zc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  flex: 0 0 auto;
+}
+
+.zc-toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.zc-toolbar-center {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.zc-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.zc-btn {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--zc-radius);
+  border: 1px solid var(--zc-btn-border);
+  background: var(--zc-btn-bg);
+  color: var(--zc-btn-fg);
+}
+
+.zc-btn:hover {
+  background: var(--zc-btn-hover-bg);
+}
+
+.zc-btn:active {
+  background: var(--zc-btn-active-bg);
+}
+
+/* ---- body / scroll ------------------------------------------------------- */
+.zc-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  position: relative;
+  border-top: 1px solid var(--zc-border);
+}
+
+/* ---- time grid (day view) ------------------------------------------------ */
+.zc-timegrid {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  min-height: 100%;
+}
+
+.zc-axis {
+  position: relative;
+  flex: 0 0 56px;
+  border-right: 1px solid var(--zc-border);
+}
+
+.zc-axis-label {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 0.6875rem;
+  color: var(--zc-muted-fg);
+  white-space: nowrap;
+}
+
+.zc-col {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+.zc-slot-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--zc-border);
+  opacity: 0.4;
+}
+
+.zc-slot-line.zc-slot-major {
+  opacity: 1;
+}
+
+/* ---- events -------------------------------------------------------------- */
+.zc-event {
+  position: absolute;
+  overflow: hidden;
+  border-radius: var(--zc-radius);
+  border: 1px solid var(--zc-event-border);
+  background: var(--zc-event-bg);
+  color: var(--zc-event-fg);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.zc-event-main {
+  padding: 2px 4px;
+  height: 100%;
+}
+
+.zc-event-default {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.zc-event-time {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.zc-event-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- now indicator ------------------------------------------------------- */
+.zc-now-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid var(--zc-now);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.zc-now-indicator::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--zc-now);
+}
