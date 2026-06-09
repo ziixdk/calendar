@@ -335,6 +335,68 @@
   padding: 3px 6px;
 }
 
+/* ---- interaction (drag / resize / select) -------------------------------- */
+.zc-event.zc-dragging {
+  z-index: 6;
+  opacity: 0.9;
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.18);
+}
+
+.zc-resize-handle {
+  position: absolute;
+  z-index: 2;
+}
+
+.zc-resize-s {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.zc-resize-e,
+.zc-resize-w {
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.zc-resize-e {
+  right: 0;
+}
+
+.zc-resize-w {
+  left: 0;
+}
+
+.zc-select-box {
+  position: absolute;
+  z-index: 5;
+  background: var(--zc-event-bg);
+  border: 1px solid var(--zc-event-border);
+  opacity: 0.45;
+  pointer-events: none;
+  border-radius: var(--zc-radius);
+}
+
+/* day view selection spans the column width */
+.zc-col > .zc-select-box {
+  left: 2px;
+  right: 2px;
+}
+
+/* timeline selection spans the row height */
+.zc-tl-select {
+  top: 2px;
+  bottom: 2px;
+}
+
+.zc-tl-row.zc-drop-target {
+  background: var(--zc-today-bg);
+}
+
 /* ---- now indicator ------------------------------------------------------- */
 .zc-now-indicator {
   position: absolute;

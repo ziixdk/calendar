@@ -33,6 +33,11 @@
         height: 720,
         slot: { duration: 15, min: '06:00', max: '19:00', labelInterval: 60 },
         nowIndicator: true,
+        editable: true,
+        selectable: true,
+        eventOverlap: true,
+        onEventChange: ({ event }) => console.log('moved', event.id, event.start.format(), '→', event.resourceId),
+        onSelect: ({ start, end, resource }) => console.log('select', start.format(), end.format(), resource?.id),
         locale: { code: 'da', intl: 'da-DK', firstDay: 1 },
         resourceGroupField: 'group',
         resourceArea: {
