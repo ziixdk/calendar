@@ -24,6 +24,8 @@
   --zc-event-border: #a9c6ff;
   --zc-event-fg: #1e3a5f;
 
+  --zc-nonbusiness: oklch(0 0 0 / 0.045);
+
   --zc-radius: 6px;
   --zc-font: inherit;
 
@@ -55,6 +57,22 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
+}
+
+/* comma-joined buttons sit flush; whitespace-separated groups keep the gap */
+.zc-btn-group {
+  display: inline-flex;
+}
+
+.zc-btn-group .zc-btn:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}
+
+.zc-btn-group .zc-btn:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .zc-toolbar-center {
@@ -428,6 +446,13 @@
 
 .zc-rg-now {
   z-index: 4;
+}
+
+/* ---- closed / non-business day ------------------------------------------- */
+.zc-body.zc-closed .zc-col,
+.zc-body.zc-closed .zc-tl-time-canvas,
+.zc-body.zc-closed .zc-rg-cols {
+  background: var(--zc-nonbusiness);
 }
 
 /* ---- interaction (drag / resize / select) -------------------------------- */

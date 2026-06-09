@@ -144,6 +144,7 @@ Custom fields (e.g. `make`, `workHours`) are available as `resource.raw.<field>`
 | `height` | `number \| string` | applied to the host element |
 | `eventMinHeight` | `number` | min height (px) of a stacked event in the timeline; row grows to fit. Default 48 |
 | `nowIndicator` | `boolean` | current-time line |
+| `dayClosed` | `boolean \| ((date) => boolean)` | tint the day as closed/non-business (`--zc-nonbusiness`) |
 | `toolbar` | `{ start?, center?, end? } \| false` | space-separated tokens: `today prev next title <customKey>` |
 | `buttons` | `{ [key]: { text?, icon?, onClick } }` | custom toolbar buttons |
 | `events` | array \| `(range) => events \| Promise<events>` | function re-runs on navigation |
@@ -186,13 +187,12 @@ const cal = new Calendar(el, {
   selectAllow: ({ resource }) => !!resource && /^[EC]/.test(resource.id),
 
   // fired after a successful drag/resize — persist it to your backend here
-  onEventChange: ({ event, oldEvent }) => {
+  onEventChange: ({ event, oldEvent, revert }) => {
     api.patch(`/calendar/event/${event.id}`, {
       from: event.start.toISOString(),
       to: event.end.toISOString(),
       resource: event.resourceId,
-    })
-    // on failure you can restore oldEvent and call cal.refetchEvents()
+    }).catch(() => revert()) // server rejected the move → snap the event back
   },
 
   // fired after a drag-select — open a "new event" menu, etc.
@@ -243,10 +243,12 @@ consumers rely on:
 | `reload()` | re-fetch resources **and** events |
 | `addEvent(input)` | add one event, returns an `EventHandle` |
 | `getEventById(id)` | returns `{ event, remove(), setExtendedProp() }` or `null` |
-| `getEvents()` / `getResources()` / `getResourceById(id)` | read stores |
+| `getEvents()` / `getResources()` | read stores |
+| `getResourceById(id)` | returns a `ResourceHandle` — `{ resource, setExtendedProp(), setProp() }` for pushing live data (work hours, punch-ins) into a resource column |
 | `gotoDate(date)` / `today()` / `prev()` / `next()` | navigation |
 | `changeView('day' \| 'resource-day' \| 'timeline')` | switch view |
-| `view` / `date` (getters) | current state |
+| `getView()` | `{ type, activeStart, activeEnd }` for the current range |
+| `view` / `date` / `activeStart` / `activeEnd` (getters) | current state |
 
 ### Real-time updates
 
@@ -290,6 +292,30 @@ export function CalendarView({ shopId }) {
 }
 ```
 
+## Translations & locale
+
+The calendar renders almost no text of its own — column headers, resource labels and
+event content all come from **your** render hooks, so they're already in your language.
+The only built-in strings are the toolbar buttons, and the date in the title. Both are
+driven by the `locale` option — pass your app's translations there (DMS feeds its
+`trans()` values straight in):
+
+```js
+const cal = new Calendar(el, {
+  locale: {
+    code: 'da',
+    intl: 'da-DK', // BCP-47 tag used by Intl to format the title date
+    firstDay: 1,
+    buttons:    { today: trans('e.today'), prev: '‹', next: '›' },
+    ariaLabels: { today: trans('e.today'), prev: trans('e.prev'), next: trans('e.next') },
+  },
+})
+```
+
+There are no hardcoded user-facing strings in the library — anything visible is either
+supplied by you (hooks) or overridable here. The title date is localised automatically
+via `Intl` using `intl` (falling back to `code`).
+
 ## Theming
 
 Every colour is a `--zc-*` custom property on `.zc`. Remap them to your design tokens —
@@ -303,6 +329,7 @@ no need to touch internals:
   --zc-event-border: var(--color-primary-300);
   --zc-event-fg: var(--color-primary-700);
   --zc-now: var(--color-danger-500);
+  --zc-nonbusiness: var(--color-muted); /* closed-day tint */
 }
 ```
 

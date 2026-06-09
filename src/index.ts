@@ -38,5 +38,6 @@ export type {
   EventChangeInfo,
   DatesSetInfo,
   EventHandle,
+  ResourceHandle,
   CalendarOptions,
 } from './types'

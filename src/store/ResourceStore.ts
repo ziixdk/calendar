@@ -17,6 +17,7 @@ export class ResourceStore {
       title: input.title ?? '',
       group: groupVal != null ? String(groupVal) : null,
       order: typeof orderVal === 'number' ? orderVal : 0,
+      extendedProps: input.extendedProps ?? {},
       raw: input,
     }
   }

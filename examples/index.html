@@ -65,6 +65,7 @@
         height: 720,
         slot: { duration: 15, min: '06:00', max: '19:00', labelInterval: 60 },
         nowIndicator: true,
+        dayClosed: (d) => d.day() === 0, // tint Sundays as closed — navigate to one to see it
         editable: true,
         selectable: true,
         eventOverlap: true,
