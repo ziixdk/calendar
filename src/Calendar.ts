@@ -375,11 +375,16 @@ export class Calendar {
     })
   }
 
-  /** Whether events are allowed to overlap on the same resource (default true). */
+  /**
+   * Whether events may overlap on the same resource. Defaults to allow; a
+   * callback returning `undefined`/`null` (e.g. an unset setting) is treated as
+   * "no opinion" → allow, so only an explicit falsy value disallows.
+   */
   private allowsOverlap(): boolean {
     const o = this.options.eventOverlap
     if (o === undefined) return true
-    return typeof o === 'function' ? o() : o
+    const v = typeof o === 'function' ? o() : o
+    return v == null ? true : Boolean(v)
   }
 
   private hasCollision(event: CalEvent, start: Dayjs, end: Dayjs, resourceId: string | null): boolean {

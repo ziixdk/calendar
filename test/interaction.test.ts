@@ -64,6 +64,13 @@ describe('commitEventChange', () => {
     const clash = cal.getEventById(1)!.event.start.add(30, 'minute')
     expect(cal.commitEventChange(ev2, clash, clash.add(60, 'minute'), null)).toBe(true)
   })
+
+  it('allows overlap when the eventOverlap callback returns undefined (no opinion)', () => {
+    const cal = dayCal(host, { eventOverlap: () => undefined })
+    const ev2 = cal.getEventById(2)!.event
+    const clash = cal.getEventById(1)!.event.start.add(30, 'minute')
+    expect(cal.commitEventChange(ev2, clash, clash.add(60, 'minute'), null)).toBe(true)
+  })
 })
 
 describe('commitSelect', () => {

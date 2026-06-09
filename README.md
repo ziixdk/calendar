@@ -357,6 +357,7 @@ npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 
 | Version | Highlights |
 | --- | --- |
+| **0.1.7** | `eventOverlap` callback returning `undefined`/`null` is treated as "allow" (no opinion) — only an explicit falsy value disallows. |
 | **0.1.6** | Timezone fix — a naïve datetime string (no offset) is interpreted as wall-clock time in the calendar timezone, not the host's. Server times no longer shift when the browser runs a different zone. |
 | **0.1.5** | `refetchEvents()` guards against stale responses — during rapid navigation an older request can no longer overwrite the newer range's events. |
 | **0.1.4** | Public `select({ start, end, resourceId })` — trigger a selection programmatically (fires `onSelect`, gated by `selectAllow`). |
