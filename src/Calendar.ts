@@ -9,6 +9,7 @@ import type {
   ResourceHandle,
   Locale,
   ToolbarConfig,
+  BusinessHours,
 } from './types'
 import { EventStore } from './store/EventStore'
 import { ResourceStore } from './store/ResourceStore'
@@ -108,6 +109,13 @@ export class Calendar {
   /** The active view's type and date window. */
   getView(): { type: ViewType; activeStart: Dayjs; activeEnd: Dayjs } {
     return { type: this._view, activeStart: this.activeStart, activeEnd: this.activeEnd }
+  }
+
+  /** Default business hours (normalised to an array). */
+  get businessHours(): BusinessHours[] {
+    const b = this.options.businessHours
+    if (!b) return []
+    return Array.isArray(b) ? b : [b]
   }
 
   private isDayClosed(): boolean {

@@ -1,7 +1,7 @@
 import type { Calendar } from '../Calendar'
 import type { Dayjs } from 'dayjs'
 import type { DateRange, CalEvent, CalResource, ResourceColumn } from '../types'
-import { dayMinutes, minutesToTime, intlFormat } from '../datelib'
+import { dayMinutes, minutesToTime, intlFormat, businessRangesForWeekday, invertRanges } from '../datelib'
 import { packEvents } from '../layout/overlap'
 import { startDrag, snap } from '../interaction/pointer'
 import { el, clamp, type View } from './View'
@@ -248,6 +248,17 @@ export class TimelineView implements View {
     tRow.style.height = `${rowH}px`
     tRow.dataset.resourceId = resource.id
     const axis = this.cal.axis
+
+    // Shade non-business time (outside the resource's open hours) behind events.
+    const hours = resource.businessHours.length ? resource.businessHours : this.cal.businessHours
+    if (hours.length) {
+      for (const [s, e] of invertRanges(businessRangesForWeekday(this.cal.date.day(), hours), axis.min, axis.max)) {
+        const fill = el('div', 'zc-nonbusiness-fill')
+        fill.style.left = `${(s - axis.min) * this.pxPerMinute}px`
+        fill.style.width = `${(e - s) * this.pxPerMinute}px`
+        tRow.appendChild(fill)
+      }
+    }
     for (const p of packed) {
       const ev = p.event
       const rawStart = dayMinutes(ev.start)

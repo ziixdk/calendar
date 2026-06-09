@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import type { SlotConfig } from './types'
+import type { SlotConfig, BusinessHours } from './types'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -62,6 +62,48 @@ export interface SlotAxis {
   slots: number
   /** Total visible minutes (max - min). */
   totalMinutes: number
+}
+
+/** Business (open) minute-ranges for a given weekday (0 = Sunday). */
+export function businessRangesForWeekday(
+  weekday: number,
+  hours: BusinessHours[],
+): Array<[number, number]> {
+  const ranges: Array<[number, number]> = []
+  for (const b of hours) {
+    const days = b.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6]
+    if (!days.includes(weekday)) continue
+    const s = timeToMinutes(b.startTime ?? '00:00')
+    const e = timeToMinutes(b.endTime ?? '24:00')
+    if (e > s) ranges.push([s, e])
+  }
+  return ranges
+}
+
+/** The gaps within [min, max] not covered by `ranges` — i.e. the non-business time. */
+export function invertRanges(
+  ranges: Array<[number, number]>,
+  min: number,
+  max: number,
+): Array<[number, number]> {
+  const sorted = ranges
+    .map((r): [number, number] => [Math.max(r[0], min), Math.min(r[1], max)])
+    .filter((r) => r[1] > r[0])
+    .sort((a, b) => a[0] - b[0])
+  const merged: Array<[number, number]> = []
+  for (const r of sorted) {
+    const last = merged[merged.length - 1]
+    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1])
+    else merged.push([r[0], r[1]])
+  }
+  const gaps: Array<[number, number]> = []
+  let cursor = min
+  for (const m of merged) {
+    if (m[0] > cursor) gaps.push([cursor, m[0]])
+    cursor = m[1]
+  }
+  if (cursor < max) gaps.push([cursor, max])
+  return gaps
 }
 
 export function buildAxis(slot: SlotConfig = {}): SlotAxis {

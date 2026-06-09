@@ -5,6 +5,8 @@ import {
   buildAxis,
   dayMinutes,
   toTz,
+  businessRangesForWeekday,
+  invertRanges,
 } from '../src/datelib'
 
 describe('timeToMinutes / minutesToTime', () => {
@@ -36,6 +38,24 @@ describe('buildAxis', () => {
     expect(axis.max).toBe(1440)
     expect(axis.slots).toBe(96)
     expect(axis.labelInterval).toBe(60)
+  })
+})
+
+describe('business hours', () => {
+  const bh = [{ daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '16:00' }]
+
+  it('returns open ranges for a covered weekday and nothing for an uncovered one', () => {
+    expect(businessRangesForWeekday(2, bh)).toEqual([[480, 960]]) // Tuesday 08–16
+    expect(businessRangesForWeekday(6, bh)).toEqual([]) // Saturday — closed
+  })
+
+  it('inverts open ranges to the non-business gaps within the axis', () => {
+    expect(invertRanges([[480, 960]], 360, 1140)).toEqual([
+      [360, 480],
+      [960, 1140],
+    ])
+    // no open ranges → the whole window is non-business
+    expect(invertRanges([], 360, 1140)).toEqual([[360, 1140]])
   })
 })
 

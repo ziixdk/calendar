@@ -1,7 +1,7 @@
 import type { Calendar } from '../Calendar'
 import type { Dayjs } from 'dayjs'
 import type { DateRange, CalEvent, CalResource } from '../types'
-import { dayMinutes, minutesToTime, intlFormat } from '../datelib'
+import { dayMinutes, minutesToTime, intlFormat, businessRangesForWeekday, invertRanges } from '../datelib'
 import { packEvents } from '../layout/overlap'
 import { startDrag, snap } from '../interaction/pointer'
 import { el, clamp, type View } from './View'
@@ -70,6 +70,7 @@ export class ResourceDayView implements View {
       const col = el('div', 'zc-rg-col')
       col.dataset.resourceId = resource.id
       this.buildSlotLines(col)
+      this.buildNonBusiness(col, resource)
       this.bindColSelect(col, resource)
       this.colsEl.appendChild(col)
       this.cols.push({ resource, content: col })
@@ -129,6 +130,18 @@ export class ResourceDayView implements View {
       axisCol.appendChild(label)
     }
     return axisCol
+  }
+
+  private buildNonBusiness(col: HTMLElement, resource: CalResource): void {
+    const hours = resource.businessHours.length ? resource.businessHours : this.cal.businessHours
+    if (!hours.length) return
+    const axis = this.cal.axis
+    for (const [s, e] of invertRanges(businessRangesForWeekday(this.cal.date.day(), hours), axis.min, axis.max)) {
+      const fill = el('div', 'zc-nonbusiness-fill')
+      fill.style.top = `${(s - axis.min) * this.pxPerMinute}px`
+      fill.style.height = `${(e - s) * this.pxPerMinute}px`
+      col.appendChild(fill)
+    }
   }
 
   private buildSlotLines(col: HTMLElement): void {

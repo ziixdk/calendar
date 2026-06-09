@@ -456,6 +456,26 @@
   background: var(--zc-nonbusiness);
 }
 
+/* ---- non-business shading ------------------------------------------------ */
+.zc-nonbusiness-fill {
+  position: absolute;
+  background: var(--zc-nonbusiness);
+  pointer-events: none;
+}
+
+/* timeline: spans the full row height, left/width set inline */
+.zc-tl-row > .zc-nonbusiness-fill {
+  top: 0;
+  bottom: 0;
+}
+
+/* day / resource-day: spans the full column width, top/height set inline */
+.zc-col > .zc-nonbusiness-fill,
+.zc-rg-col > .zc-nonbusiness-fill {
+  left: 0;
+  right: 0;
+}
+
 /* ---- interaction (drag / resize / select) -------------------------------- */
 .zc-event.zc-dragging {
   z-index: 6;

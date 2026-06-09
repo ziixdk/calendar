@@ -14,7 +14,7 @@ export class ResourceStore {
     const orderVal = input[this.orderField]
     // Non-standard top-level fields are folded into extendedProps so callers can
     // read everything from one place regardless of how the source shaped it.
-    const known = new Set(['id', 'title', 'group', 'order', 'extendedProps', this.groupField, this.orderField])
+    const known = new Set(['id', 'title', 'group', 'order', 'businessHours', 'extendedProps', this.groupField, this.orderField])
     const extra: Record<string, unknown> = {}
     for (const key of Object.keys(input)) {
       if (!known.has(key)) extra[key] = input[key]
@@ -24,6 +24,7 @@ export class ResourceStore {
       title: input.title ?? '',
       group: groupVal != null ? String(groupVal) : null,
       order: typeof orderVal === 'number' ? orderVal : 0,
+      businessHours: Array.isArray(input.businessHours) ? input.businessHours : [],
       extendedProps: { ...extra, ...(input.extendedProps ?? {}) },
       raw: input,
     }

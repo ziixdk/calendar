@@ -89,6 +89,28 @@ describe('TimelineView rendering', () => {
     expect(host.querySelector('[data-tider]')).toBeTruthy()
   })
 
+  it('shades non-business time per resource business hours', () => {
+    const cal = new Calendar(host, {
+      view: 'timeline',
+      timezone: 'Europe/Copenhagen',
+      date: '2026-06-13', // a Saturday
+      slot: { min: '06:00', max: '19:00', duration: 15 },
+      resources: [
+        { id: 'E1', title: 'A', businessHours: [{ daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '16:00' }] },
+        { id: 'E2', title: 'B' }, // no business hours → not shaded
+      ],
+      events: [],
+    })
+    cal.render()
+    const e1 = host.querySelector<HTMLElement>('.zc-tl-row[data-resource-id="E1"]')!
+    const e2 = host.querySelector<HTMLElement>('.zc-tl-row[data-resource-id="E2"]')!
+    const fills = e1.querySelectorAll<HTMLElement>('.zc-nonbusiness-fill')
+    // Saturday isn't a business day → the whole axis (13h × 90px) is shaded
+    expect(fills.length).toBe(1)
+    expect(fills[0].style.width).toBe('1170px')
+    expect(e2.querySelectorAll('.zc-nonbusiness-fill').length).toBe(0)
+  })
+
   it('fires onEventClick from a timeline bar', () => {
     let clicked: string | null = null
     build({ onEventClick: ({ event }: { event: { id: string } }) => (clicked = event.id) })

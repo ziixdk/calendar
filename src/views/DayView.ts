@@ -1,7 +1,7 @@
 import type { Calendar } from '../Calendar'
 import type { Dayjs } from 'dayjs'
 import type { DateRange, CalEvent } from '../types'
-import { dayMinutes, minutesToTime, intlFormat } from '../datelib'
+import { dayMinutes, minutesToTime, intlFormat, businessRangesForWeekday, invertRanges } from '../datelib'
 import { packEvents } from '../layout/overlap'
 import { startDrag, snap } from '../interaction/pointer'
 import { el, clamp, type View } from './View'
@@ -70,6 +70,17 @@ export class DayView implements View {
       if ((s * axis.duration) % axis.labelInterval === 0) line.classList.add('zc-slot-major')
       line.style.top = `${s * SLOT_PX}px`
       this.content.appendChild(line)
+    }
+
+    // Shade non-business time from the (global) business hours, if configured.
+    const hours = this.cal.businessHours
+    if (hours.length) {
+      for (const [s, e] of invertRanges(businessRangesForWeekday(this.cal.date.day(), hours), axis.min, axis.max)) {
+        const fill = el('div', 'zc-nonbusiness-fill')
+        fill.style.top = `${(s - axis.min) * this.pxPerMinute}px`
+        fill.style.height = `${(e - s) * this.pxPerMinute}px`
+        this.content.appendChild(fill)
+      }
     }
 
     this.grid.appendChild(axisCol)

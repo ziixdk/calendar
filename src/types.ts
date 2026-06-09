@@ -38,12 +38,21 @@ export interface EventInput {
   [key: string]: unknown
 }
 
+/** A business-hours window: which weekdays (0 = Sunday) and the open time range. */
+export interface BusinessHours {
+  daysOfWeek?: number[]
+  startTime?: string
+  endTime?: string
+}
+
 /** Raw resource as supplied by the host application. */
 export interface ResourceInput {
   id: string | number
   title?: string
   group?: string
   order?: number
+  /** Open hours for this resource; time outside these is shaded non-business. */
+  businessHours?: BusinessHours[]
   /** Arbitrary domain data (e.g. workHours, punchinout, badges). */
   extendedProps?: Record<string, unknown>
   [key: string]: unknown
@@ -70,6 +79,8 @@ export interface CalResource {
   title: string
   group: string | null
   order: number
+  /** Open hours for this resource (empty = none defined). */
+  businessHours: BusinessHours[]
   /** Arbitrary domain data, mutable via the resource handle's setExtendedProp. */
   extendedProps: Record<string, unknown>
   raw: ResourceInput
@@ -204,6 +215,11 @@ export interface CalendarOptions {
    * the current date (re-evaluated on navigation).
    */
   dayClosed?: boolean | ((date: Dayjs) => boolean)
+  /**
+   * Default open hours used to shade non-business time when a resource has none
+   * of its own. Resource-level `businessHours` take precedence.
+   */
+  businessHours?: BusinessHours | BusinessHours[]
   editable?: boolean
   selectable?: boolean
   height?: number | string
