@@ -260,18 +260,36 @@ export class Calendar {
     return r ? this.resourceHandle(r) : null
   }
 
+  private resourceRenderScheduled = false
+
+  /**
+   * Coalesce resource-area re-renders: many setExtendedProp calls in a row (e.g.
+   * pushing work hours / punch-ins for every resource) collapse into a single
+   * cell update on the next microtask, and event bars are never rebuilt — so the
+   * timeline doesn't flicker.
+   */
+  private scheduleResourceRender(): void {
+    if (this.resourceRenderScheduled) return
+    this.resourceRenderScheduled = true
+    queueMicrotask(() => {
+      this.resourceRenderScheduled = false
+      if (this.viewImpl?.renderResources) this.viewImpl.renderResources()
+      else this.viewImpl?.renderEvents()
+    })
+  }
+
   private resourceHandle(r: CalResource): ResourceHandle {
     return {
       id: r.id,
       resource: r,
       setExtendedProp: (key, value) => {
         r.extendedProps[key] = value
-        this.viewImpl?.renderEvents()
+        this.scheduleResourceRender()
       },
       setProp: (key, value) => {
         if (key === 'title') r.title = value
         else r.group = value
-        this.viewImpl?.renderEvents()
+        this.scheduleResourceRender()
       },
     }
   }

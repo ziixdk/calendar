@@ -170,6 +170,24 @@ export class TimelineView implements View {
     this.relayout()
   }
 
+  /** Re-render only the resource-area cells, leaving event bars untouched. */
+  renderResources(): void {
+    if (!this.resourceRows) return
+    this.resourceRows
+      .querySelectorAll<HTMLElement>('.zc-tl-resource-row[data-resource-id]')
+      .forEach((row) => {
+        const resource = this.cal.resources.get(row.dataset.resourceId ?? '')
+        if (!resource) return
+        row.innerHTML = ''
+        for (const col of this.columns()) {
+          const cell = el('div', 'zc-tl-col-cell')
+          this.applyWidth(cell, col.width)
+          this.fillResourceCell(cell, col, resource)
+          row.appendChild(cell)
+        }
+      })
+  }
+
   /** Rebuild rows in both panes from the current resources + events. */
   private relayout(): void {
     if (!this.resourceRows || !this.rowsEl) return

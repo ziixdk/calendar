@@ -243,7 +243,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0.25rem 0.5rem;
+  gap: 2px;
+  padding: 0.5rem;
   overflow: hidden;
   font-size: 0.8125rem;
   min-width: 0;
@@ -513,8 +514,11 @@
   bottom: 2px;
 }
 
-.zc-tl-row.zc-drop-target {
+.zc-tl-row.zc-drop-target,
+.zc-rg-col.zc-drop-target {
   background: var(--zc-today-bg);
+  outline: 2px dashed var(--zc-event-border);
+  outline-offset: -2px;
 }
 
 /* ---- now indicator ------------------------------------------------------- */

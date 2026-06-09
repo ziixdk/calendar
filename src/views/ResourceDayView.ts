@@ -211,6 +211,19 @@ export class ResourceDayView implements View {
     return col ? (col.dataset.resourceId ?? null) : undefined
   }
 
+  private highlightCol(event: MouseEvent, bar: HTMLElement): void {
+    this.clearHighlight()
+    const prev = bar.style.pointerEvents
+    bar.style.pointerEvents = 'none'
+    const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null
+    bar.style.pointerEvents = prev
+    target?.closest('.zc-rg-col[data-resource-id]')?.classList.add('zc-drop-target')
+  }
+
+  private clearHighlight(): void {
+    this.colsEl?.querySelectorAll('.zc-drop-target').forEach((n) => n.classList.remove('zc-drop-target'))
+  }
+
   private bindBar(bar: HTMLElement, ev: CalEvent): void {
     this.cal.bindContextMenu(bar, ev)
     if (!this.cal.editable) {
@@ -240,9 +253,11 @@ export class ResourceDayView implements View {
         onStart: () => bar.classList.add('zc-dragging'),
         onMove: ({ event }) => {
           bar.style.top = `${(startMinAt(event.clientY) - axis.min) * this.pxPerMinute}px`
+          this.highlightCol(event, bar)
         },
         onEnd: ({ moved, event }) => {
           bar.classList.remove('zc-dragging')
+          this.clearHighlight()
           if (!moved) {
             this.cal.fireEventClick(ev, bar, event)
             return

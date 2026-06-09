@@ -6,6 +6,12 @@ export interface View {
   mount(): void
   /** Re-place events only, without rebuilding the static structure. */
   renderEvents(): void
+  /**
+   * Re-render only the resource-area cells (e.g. after a resource's
+   * extendedProps change), leaving event bars untouched. Optional — views
+   * without a resource area can omit it.
+   */
+  renderResources?(): void
   /** Tear down and detach all DOM owned by the view. */
   unmount(): void
   /** The date window this view currently shows, in the calendar timezone. */

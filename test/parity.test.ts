@@ -31,14 +31,29 @@ describe('DMS API parity', () => {
     return cal
   }
 
-  it('#1 getResourceById(id).setExtendedProp updates the resource column live', () => {
+  it('#1 getResourceById(id).setExtendedProp updates the resource column live', async () => {
     const cal = timelineCal()
     expect(host.querySelector('[data-wh]')!.textContent).toBe('–')
     const handle = cal.getResourceById('E1')!
     expect(handle.id).toBe('E1')
     expect(handle.resource.extendedProps.employee_id).toBe(7)
     handle.setExtendedProp('workHours', '07:30')
+    // resource-area re-render is coalesced onto a microtask (avoids flicker)
+    await Promise.resolve()
     expect(host.querySelector('[data-wh]')!.textContent).toBe('07:30')
+  })
+
+  it('#1b folds non-standard top-level resource fields into extendedProps', () => {
+    const cal = new Calendar(host, {
+      view: 'timeline',
+      timezone: 'Europe/Copenhagen',
+      date: '2026-06-09',
+      resources: [{id: 'E1', title: 'A', group: 'G', badges: ['vip', 'new'], workHours: {workTime: 60}}],
+    })
+    cal.render()
+    const r = cal.getResourceById('E1')!.resource
+    expect(r.extendedProps.badges).toEqual(['vip', 'new'])
+    expect(r.extendedProps.workHours).toEqual({workTime: 60})
   })
 
   it('#2 exposes the active view range (view.activeStart parity)', () => {
