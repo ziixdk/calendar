@@ -1,13 +1,15 @@
 # @ziix/calendar
 
+By [ziix.eu](https://ziix.eu) · [npm](https://www.npmjs.com/package/@ziix/calendar)
+
 A framework-agnostic resource & time-grid calendar — a from-scratch, **license-free**
 replacement for the FullCalendar views DMS uses (`timeGridDay`, `resourceTimeGridDay`,
 `resourceTimeline`). No premium scheduler licence, no React/Vue/Preact dependency: a
 plain imperative class you drive through a ref from any framework.
 
 > **Status.** All three views (`day`, `resource-day`, `timeline`) and the full interaction
-> engine (drag/resize/select) are implemented and tested. Remaining work is polish, the DMS
-> migration and the npm release — see the roadmap below.
+> engine (drag/resize/select) are implemented and tested. Published on npm — remaining work
+> is polish and the DMS migration (see the roadmap below).
 
 ## Install
 
@@ -357,3 +359,7 @@ npm run build      # dist/ziix-calendar.js + .css + index.d.ts
 ## License
 
 MIT
+
+---
+
+Built by [ziix](https://ziix.eu).
