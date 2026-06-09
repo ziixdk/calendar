@@ -66,8 +66,8 @@ describe('DayView rendering', () => {
     expect(host.querySelectorAll('.zc-event').length).toBe(2)
   })
 
-  it('throws a clear error for not-yet-implemented views', () => {
-    const cal = new Calendar(host, { view: 'timeline' })
-    expect(() => cal.render()).toThrow(/timeline.*not implemented/i)
+  it('throws a clear error for the not-yet-implemented resource-day view', () => {
+    const cal = new Calendar(host, { view: 'resource-day' })
+    expect(() => cal.render()).toThrow(/resource-day.*not implemented/i)
   })
 })
